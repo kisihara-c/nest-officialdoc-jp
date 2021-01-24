@@ -4,5 +4,5 @@ topics: ["Nest","NestJS","Node.js","Web"]
 published: true
 price: 0
 chapters: 
-  - OVERVIEW-FirstSteps
+  - overview-firststeps
 toc_depth: 2
