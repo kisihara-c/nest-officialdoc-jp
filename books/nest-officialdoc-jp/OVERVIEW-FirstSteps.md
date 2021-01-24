@@ -1,5 +1,5 @@
 ---
-title: "OVERVIEW-FirstSteps"
+title: "overview-firststeps"
 ---
 
 # First steps
