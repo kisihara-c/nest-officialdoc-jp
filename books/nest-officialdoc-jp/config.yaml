@@ -6,4 +6,5 @@ price: 0
 chapters: 
   - introduction
   - overview-firststeps
+  - overview-controllers
 toc_depth: 2
