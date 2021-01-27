@@ -7,4 +7,5 @@ chapters:
   - introduction
   - overview-firststeps
   - overview-controllers
+  - overview-providers
 toc_depth: 2
