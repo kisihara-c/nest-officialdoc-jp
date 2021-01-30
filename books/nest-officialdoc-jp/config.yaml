@@ -8,4 +8,5 @@ chapters:
   - overview-firststeps
   - overview-controllers
   - overview-providers
+  - overview-modules
 toc_depth: 2
