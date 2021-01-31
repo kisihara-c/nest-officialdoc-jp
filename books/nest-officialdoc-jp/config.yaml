@@ -9,4 +9,6 @@ chapters:
   - overview-controllers
   - overview-providers
   - overview-modules
+  - overview-middleware
+  - overview-excepitonfilters
 toc_depth: 2

@@ -1,5 +1,5 @@
 ---
-title: overview-middleware
+title: "overview-middleware"
 ---
 
 
@@ -50,4 +50,63 @@ export class AppModule implements NestModule {
       .forRoutes('cats');
   }
 }
+```
+>HINT  
+>`apply()`メソッドは単一のミドルウェア、もしくはマルチプルミドルウェア（multiple middlewaresの項を参照）を指定するための複数の引数を取る事ができる。
+
+## ルートの除外
+At times we want to exclude certain routes from having the middleware applied. （訳出できず、一旦置きます…）　`exclude()`メソッドを使用すると特定のルートを簡単に除外する事ができる。以下のように単一の文字列、複数の文字列、もしくはRouteInfoオブジェクトを渡して実行する。
+
+```ts
+consumer
+  .apply(LoggerMiddleware)
+  .exclude(
+    { path: 'cats', method: RequestMethod.GET },
+    { path: 'cats', method: RequestMethod.POST },
+    'cats/(.*)',
+  )
+  .forRoutes(CatsController);
+```
+>Hint
+>`exclude()`メソッドは[`path-to-regexp`](https://github.com/pillarjs/path-to-regexp#parameters)パッケージを使用したワイルドカードパラメータをサポートしている。
+
+上記の例では、`LoggerMiddleWare`は`exclude()`メソッドに渡された３つのパスを除いた状態で`CatsController()`のルートに従う。
+
+## 関数ミドルウェア
+これまで説明してきた`LoggerMiddleware`クラスは非常にシンプルで、メンバも追加メソッドも依存関係もない。クラスではなくシンプルな関数で実装してみようか？　実は可能だ。このタイプのミドルウェアは関数ミドルウェアと呼ばれる。違いを説明するため、LoggerMiddleWareを関数ミドルウェアにしてみよう。
+
+```ts :logger.middleware.ts 
+import { Request, Response, NextFunction } from 'express';
+
+export function logger(req: Request, res: Response, next: NextFunction) {
+  console.log(`Request...`);
+  next();
+};
+```
+
+そして、`AppModule`で使う。
+
+```ts: app.module.ts 
+consumer
+  .apply(logger)
+  .forRoutes(CatsController);
+```
+
+>Hint  
+>作成検討中のミドルウェアが依存関係を必要としない場合、よりシンプルな関数ミドルウェアの使用の検討余地がある。
+
+## マルチプルミドルウェア
+前述のように、順次実行される複数のミドルウェアをバインドするには、`apply()`メソッドの中でカンマ区切りのリストを指定する。
+
+```
+consumer.apply(cors(), helmet(), logger).forRoutes(CatsController);
+```
+
+## グローバルミドルウェア
+登録されている全てのルートに一気にミドルウェアをバインドしたい場合は、`INestApplication`インスタンスから供給される`use()`メソッドを使用する。
+
+```ts
+const app = await NestFactory.create(AppModule);
+app.use(logger);
+await app.listen(3000);
 ```
