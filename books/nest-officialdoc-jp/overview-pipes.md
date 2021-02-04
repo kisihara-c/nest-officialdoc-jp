@@ -15,7 +15,7 @@ title: overview-pipes
 Nestには組み込みのパイプが多数用意されており、すぐに使うことができる。独自のカスタムパイプを構築する事もできる。この章では組み込みパイプを紹介し、ルートハンドラにバインドする方法を示す。次に、いくつかカスタムパイプを見てみて、一からパイプを作る方法を示す。
 
 >Hint  
->パイプは例外範囲内で動作する。つまり、パイプが例外をthrowした場合、例外レイヤ（グローバル例外フィルタと現在のコンテキストに適用されているすべての例外フィルタ）で処理される。その事から、パイプで例外がthrowされた時、其れ以降のコントローラは実行されない。システムの境界で外部の情報元から入ってくるデータを検証する為の、ベストプラクティス・テクニックだといえる。
+>パイプは例外範囲内で動作する。つまり、パイプが例外を投げた場合、例外レイヤ（グローバル例外フィルタと現在のコンテキストに適用されているすべての例外フィルタ）で処理される。その事から、パイプで例外がthrowされた時、それ以降のコントローラは実行されない。システムの境界で外部の情報元から入ってくるデータを検証する為の、ベストプラクティスとなるテクニックだといえる。
 
 ## 組み込みパイプ
 
@@ -29,7 +29,7 @@ Nestには組み込みのパイプが多数用意されており、すぐに使�
 - `DefaultValuePipe`
 
 上記は`@nestjs/common`パッケージからエクスポートされる。  
-`ParseIntPipe`の使い方を簡単に見る。これは変換機能のユースケースで、パイプはメソッドハンドラの変数がJavaScriptの整数に変換されることを保証します。変換に失敗した場合例外を投げる。この章の後半では、`ParseIntPipe`のシンプルなカスタム例を紹介する。下記のテクニック例は、この章では`Parse*Pipe`とも呼ぶ他の組み込み変換パイプ――`ParseBoolPipe`、`ParseArrayPipe`、`ParseUUIDPipe`にも適用される。
+`ParseIntPipe`の使い方を簡単に確認する。これは**変換**パイプのユースケースで、パイプはメソッドハンドラの変数がJavaScriptの整数に変換されることを保証する。変換に失敗した場合例外を投げる。この章の後半では、`ParseIntPipe`のシンプルなカスタム例を紹介する。下記のテクニック例は、この章では`Parse*Pipe`とも呼ぶ他の組み込み変換パイプ――`ParseBoolPipe`、`ParseArrayPipe`、`ParseUUIDPipe`にも適用される。
 
 ## パイプのバインディング
 パイプを使用するには、パイプクラスのインスタンスを適切なコンテキストにバインドする必要がある。`ParseIntPipe`の例では、パイプを特定のルートハンドラメソッドに関連付けて、そのメソッドが呼ばれる前に実行されるようにしたい。次のような構文を使用する。メソッド変数のレベルでパイプをバインドするものだ。
@@ -90,7 +90,7 @@ async findOne(@Param('uuid', new ParseUUIDPipe()) uuid: string) {
 ```
 
 >HINT
->`ParseUUIDPipe()`を使ってUUIDのver3,4,5を通している時、もし特定のバージョンのUUIDのみが必要な場合はパイプのオプション設定でバージョンを渡す事ができる。（※訳出怪しい…！　申し訳有りません）
+>When using `ParseUUIDPipe()` you are parsing UUID in version 3, 4 or 5, if you only require a specific version of UUID you can pass a version in the pipe options. （※訳出できず…！　申し訳有りません）
 
 上記では様々なParse*ファミリーの組み込みパイプのバインド例を見てきた。検証パイプのバインドは少し異なる。その事は続く章で議論していく。
 
@@ -289,4 +289,109 @@ export class ValidationPipe implements PipeTransform<any> {
 次に、メタタイプフィールドをメタタイプ変数として抽出する（`ArgumentMetadata`からこのメンバだけを抽出する）為に分割代入を使用している事に注意。これは「全ての`ArgumentMetadata`を取得してからメタタイプ変数を割り当てる為の追加の文を持つ」動作を表す構文にすぎない。  
 また次に、ヘルパー関数`toValidate()`に注目しよう。これは現在処理中の引数がネイティブのJavaScript型である場合に検証ステップをバイパスする役割を果たす（そういった引数には検証用のデコレータをつける事ができない為、検証ステップを実行する理由がない）。  
 更に次に、クラス変換関数`plainToClass()`を使用して、プレーンなJavaScriptの引数オブジェクトを型付きオブジェクトに変換し、検証を適用できるようにする。理由は、ネットワークのリクエストがデシリアライズされた時、受信したpostのbodyオブジェクトは**あらゆる型情報を持たない**からだ（基礎となるプラットフォーム、例えばExpressが動く方法となる）。クラスバリデータは先程DTO用に定義したバリデーションデコレータを使用する必要がある為、この変換を実行して受信したbodyを適切にデコレーションされたオブジェクトとして扱う必要がある。  
-最後に、先述の通り、これは検証パイプである為、値を変更せずに返すか例外を投げる。
+最後に、先述の通り、これは検証パイプである為、値を変更せずに返すか例外を投げる。  
+最終ステップは検証パイプをバインドすることだ。パイプは、パラメータ・メソッド・コントローラ・グローバルの単位でスコープ化できる。さっき、Joiベースの検証パイプではメソッドレベルでパイプをバインドする例を見た。以下の例では、パイプのインスタンスをルートハンドラの`@Body()`デコレータにバインドして、投稿のbody部分を検証する為にパイプが呼び出されるようにする。
+
+```ts :cats.controller.ts 
+@Post()
+async create(
+  @Body(new ValidationPipe()) createCatDto: CreateCatDto,
+) {
+  this.catsService.create(createCatDto);
+}
+```
+
+パラメータスコープ付きのパイプは、検証ロジックがある特定のパラメータにのみ関係する場合に便利。
+
+## グローバルスコープ化パイプ
+`ValidationPipe`は可能な限り汎用的に作成されている。アプリケーション全体の全てのルートハンドラに適用されるよう、グローバルスコープ付きパイプとして設定する事で、実用性を最大限にできる。
+
+```ts :main.ts
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.useGlobalPipes(new ValidationPipe());
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+>Notice  
+>ハイブリッドアプリ（hybrid apps）の場合、`useGlobalPipes()`メソッドはゲートウェイとマイクロサービス用のパイプを作らない。「標準的な」（ハイブリッドでない）マイクロサービスアプリ（microservice apps）の場合、`useGlobalPipes()`はグローバルにパイプをマウントする。
+
+グローバルパイプは、全てのコントローラと全てのルートハンドラに対して、アプリケーション全体で使用される。  
+
+依存関係という点では、（上記の例のように`useGlobalPipes()`を使用して）任意のモジュールの外部から登録されたグローバルパイプは、バインディングが任意のモジュールのコンテキストの外で行われている為、依存関係をインジェクションできない事に注意。この問題を解決する為に、以下のような構成で、任意のモジュールから直接グローバルパイプを設定する。
+
+```ts :app.module.ts
+import { Module } from '@nestjs/common';
+import { APP_PIPE } from '@nestjs/core';
+
+@Module({
+  providers: [
+    {
+      provide: APP_PIPE,
+      useClass: ValidationPipe,
+    },
+  ],
+})
+export class AppModule {}
+```
+
+>HINT  
+>このアプローチを使用してパイプの依存性インジェクションを行う場合、この構造が採用されているモジュールに関係なく、パイプは実際にはグローバルである事に注意。どこでやるべきか？　パイプ（上の例では`ValidationPipe`）が定義されているモジュールを選ぼう。また、カスタムプロバイダの登録を扱う方法は`useClass`だけではない。詳細はcustom-providersの項にて。
+
+## 変換パイプの使用例
+カスタムパイプの使用例は検証だけではない。この章の最初に、パイプは入力データを希望の形式に**変換**する事もできると述べた。これは、`transform`関数から返される値が引数の前の値を完全に上書きするからだ。
+
+変換パイプはどんな時に便利だろう？　クライアントから渡されたデータがルートハンドラメソッドによって適切に処理される前に、データの変更（例えば文字列を整数に変換する等）が必要な場合を考えてみよう。さらに言えば、いくつかの必須データフィールドが欠落していて、デフォルト値を適用したい場合もある。**変換パイプ**は、クライアントリクエストとリクエストハンドラに間に処理関数を介在させる事で、これらの機能を実現する事ができる。  
+文字列を整数値にパースする為のシンプルな`ParseIntPipe`を提示する。（※前述の通り、Nestにはより洗練された`ParseIntPipe`が組み込まれている。カスタム変換パイプの単純な例として組み込む）
+
+```ts :parse-int.pipe.ts 
+import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from '@nestjs/common';
+
+@Injectable()
+export class ParseIntPipe implements PipeTransform<string, number> {
+  transform(value: string, metadata: ArgumentMetadata): number {
+    const val = parseInt(value, 10);
+    if (isNaN(val)) {
+      throw new BadRequestException('Validation failed');
+    }
+    return val;
+  }
+}
+```
+このパイプを、選ばれたparamにバインドする。
+
+```ts
+@Get(':id')
+async findOne(@Param('id', new ParseIntPipe()) id) {
+  return this.catsService.findOne(id);
+}
+```
+
+もう一つの有用な変換の例は、リクエストで提供されたidを使ってデータベースから**既存のユーザー**のエンティティを選択する事だ。
+
+```ts
+@Get(':id')
+findOne(@Param('id', UserByIdPipe) userEntity: UserEntity) {
+  return userEntity;
+}
+```
+
+このパイプの実装は読者に委ねるが、他のすべての変換パイプと同様、入力値（id）を受け取り、出力値（UserEntityオブジェクト）を返す事に注意。この事で、お決まりのコードをハンドラから共通のパイプに抽象化して、コードをより宣言的でDRYなものにできる。
+
+## デフォルトの提供
+`Parse*`パイプはパラメータの値が定義されていることを期待する。Null、undifinedを受け取った時に例外を投げる。エンドポイントが、失われた`querystring`パラメータの値を処理できるようにするには、`Parse*`パイプがこれらの値を処理する前にデフォルト値を注入しなければならない。`DefaultValuePipe`がその役割を果たす。以下に示すように、関連する`@Parse*`パイプの前に`@Query()`デコレータで`DefaultValuePipe`をインスタンス化するだけだ。
+
+```ts
+@Get()
+async findAll(
+  @Query('activeOnly', new DefaultValuePipe(false), ParseBoolPipe) activeOnly: boolean,
+  @Query('page', new DefaultValuePipe(0), ParseIntPipe) page: number,
+) {
+  return this.catsService.findAll({ activeOnly, page });
+}
+```
+
+## 組み込みの検証パイプ
+注意点として、`ValidationPipe`はNestによって提供されており、一般的な検証パイプを独自に構築する必要はない。組み込みの`ValidationPipe`はこの章で構築したサンプルよりも沢山のオプションを提供する。詳細とたくさんの例についてはvalidationの項に記載。

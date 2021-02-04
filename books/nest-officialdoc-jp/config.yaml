@@ -11,4 +11,5 @@ chapters:
   - overview-modules
   - overview-middleware
   - overview-excepitonfilters
+  - overview-pipes
 toc_depth: 2
