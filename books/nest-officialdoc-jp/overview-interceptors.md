@@ -1,5 +1,5 @@
 ---
-title: overview-intercepters
+title: overview-interceptors
 ---
 
 # インターセプター
