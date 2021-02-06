@@ -13,4 +13,5 @@ chapters:
   - overview-excepitonfilters
   - overview-pipes
   - overview-guards
+  - overview-intercepters
 toc_depth: 2
