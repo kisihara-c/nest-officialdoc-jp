@@ -15,4 +15,5 @@ chapters:
   - overview-guards
   - overview-interceptors
   - overview-customroutedecorators
+  - fundamentals-customproviders
 toc_depth: 2
