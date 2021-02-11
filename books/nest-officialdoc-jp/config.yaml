@@ -16,5 +16,5 @@ chapters:
   - overview-interceptors
   - overview-customroutedecorators
   - fundamentals-customproviders
-  -fundamentals-asyncproviders
+  - fundamentals-asyncproviders
 toc_depth: 2
