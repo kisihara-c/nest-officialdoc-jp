@@ -17,4 +17,5 @@ chapters:
   - overview-customroutedecorators
   - fundamentals-customproviders
   - fundamentals-asyncproviders
+  - fundamentals-dynamicmodules
 toc_depth: 2
