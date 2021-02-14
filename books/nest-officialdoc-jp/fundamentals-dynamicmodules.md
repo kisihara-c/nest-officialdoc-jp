@@ -1,3 +1,7 @@
+---
+title: fundamentals-dynamicmodules
+---
+
 # 動的モジュール
 
 [モジュールの章](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/overview-modules)ではNestモジュールの基本をカバーした。動的モジュールも簡単に紹介した。この章では動的モジュールのテーマをより広く説明する。この章を終えるとモジュールとはなにか、どう、いつ使うかが十分に理解できるはずだ。
