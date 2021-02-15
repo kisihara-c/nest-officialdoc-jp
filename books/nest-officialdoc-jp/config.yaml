@@ -18,4 +18,5 @@ chapters:
   - fundamentals-customproviders
   - fundamentals-asyncproviders
   - fundamentals-dynamicmodules
+  - fundamentals-injectionscopes
 toc_depth: 2
