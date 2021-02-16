@@ -19,4 +19,5 @@ chapters:
   - fundamentals-asyncproviders
   - fundamentals-dynamicmodules
   - fundamentals-injectionscopes
+  - fundamentals-circulardependency
 toc_depth: 2
