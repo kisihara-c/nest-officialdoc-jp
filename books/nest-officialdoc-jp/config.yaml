@@ -20,4 +20,5 @@ chapters:
   - fundamentals-dynamicmodules
   - fundamentals-injectionscopes
   - fundamentals-circulardependency
+  - fundamentals-modulereference
 toc_depth: 2
