@@ -21,4 +21,5 @@ chapters:
   - fundamentals-injectionscopes
   - fundamentals-circulardependency
   - fundamentals-modulereference
+  - fundamentals-executioncontext
 toc_depth: 2
