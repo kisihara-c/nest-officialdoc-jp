@@ -23,4 +23,5 @@ chapters:
   - fundamentals-modulereference
   - fundamentals-executioncontext
   - fundamentals-lifecycleevents
+  - fundamentals-platformagnosticism
 toc_depth: 2
