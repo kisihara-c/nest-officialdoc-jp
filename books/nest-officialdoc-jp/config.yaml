@@ -22,4 +22,5 @@ chapters:
   - fundamentals-circulardependency
   - fundamentals-modulereference
   - fundamentals-executioncontext
+  - fundamentals-lifecycleevents
 toc_depth: 2
