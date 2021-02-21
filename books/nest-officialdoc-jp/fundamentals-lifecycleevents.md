@@ -76,7 +76,7 @@ bootstrap();
 >WARNING  
 >プラットフォーム固有の制限の為、NestJSはWindows上でのアプリケーションのシャットダウンフックのサポートを制限している。`SIGBREAK`やいくらかの`SIGHUP`と同様に、`SIGINT`も動作することが期待できる。詳細は[こちら](https://nodejs.org/api/process.html#process_signal_events)。しかしタスクマネージャでのプロセスの終了が無制限に可能な為、`SIGTERM`はWindows上では動作しない。言ってしまえば、アプリケーションがなんとかするのは無理だ（訳出自信なし…原文：there's no way for an application to detect or prevent it）。`SIGINT`・`SIGBREAK`などがWindows上でどう扱われているかはlibuvの関連ドキュメントを参考のこと。また、Node.jsドキュメントの[シグナルイベント処理](https://nodejs.org/api/process.html#process_signal_events)も見る事。
 
->Info
+>Info  
 >`enableShutdownHooks`はリスナーを起動する事でメモリを消費する。１つのNodeプロセスで複数のNestアプリを実行している場合（例：Jestで並列テスト中等）、Nodeはリスナープロセスの過剰について文句を言う事がある。この理由の為に`enableShutdownHooks`はデフォルトで無効となっている。1つのNodeプロセスで複数のインスタンスを実行している時、この状態に気をつけてほしい。
 
 アプリケーションが終了信号を受信すると、アプリケーションは対応するシグナルを最初のパラメータとして、登録されている全ての`onModuleDestroy()`、` beforeApplicationShutdown()`、その後`onApplicationShutdown()`を（上記に説明したシークエンスの中）呼び出す。登録された関数が非同期呼び出し（promiseをreturnする）を待っている場合、プロミスが解決されるか拒否されるまで、Nestはシークエンスを実行しない。
