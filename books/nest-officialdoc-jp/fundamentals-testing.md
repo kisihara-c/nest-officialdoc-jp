@@ -56,3 +56,59 @@ describe('CatsController', () => {
 上記のサンプルはちょっとしたものなので、実際にNestで特化したテストはしていない。実際依存性インジェクションも使っていない（`CatsService`のインスタンスを`catsController`に渡している事に注意）。この形式のテスト（テストされるクラスを手動でインスタンス化する）はフレームワークから独立している為、分離型テストと呼ばれる事が多い。ここでは、Nestの機能をより広範囲に利用するアプリケーションのテストに役立つ、より高度な機能を紹介する。
 
 ## テストユーティリティ
+
+`@nestjs/testing`パッケージは、より堅牢なテストプロセスを可能にするユーティリティセットを提供する。組み込みの`Test`クラスを使って先の例を書き換えてみよう。
+
+```ts :cats.controller.spec.ts 
+import { Test } from '@nestjs/testing';
+import { CatsController } from './cats.controller';
+import { CatsService } from './cats.service';
+
+describe('CatsController', () => {
+  let catsController: CatsController;
+  let catsService: CatsService;
+
+  beforeEach(async () => {
+    const moduleRef = await Test.createTestingModule({
+        controllers: [CatsController],
+        providers: [CatsService],
+      }).compile();
+
+    catsService = moduleRef.get<CatsService>(CatsService);
+    catsController = moduleRef.get<CatsController>(CatsController);
+  });
+
+  describe('findAll', () => {
+    it('should return an array of cats', async () => {
+      const result = ['test'];
+      jest.spyOn(catsService, 'findAll').mockImplementation(() => result);
+
+      expect(await catsController.findAll()).toBe(result);
+    });
+  });
+});
+```
+
+`Test`クラスは、アプリケーション実行コンテキスト（基本的にNest全てをモックする）を提供するのに便利だが、モックやオーバーライドを含んだクラスインスタンスの管理を容易にするフックを提供する。`Test`クラスには`createTestingModule()`メソッドがあり、モジュールのメタデータオブジェクトを引数に取る（`@Module()`デコレータに渡すのと同じオブジェクト）。このメソッドは`TestingModule`のインスタンスを返す。そのインスタンスは順番にいくつかのメソッドを提供する。ユニットテストの場合重要なのは、`compile()`メソッドだ。このメソッドは依存関係を持つモジュールをブートストラップし（`NestFactory.create()`を使用して従来の`main.ts`ファイルからアプリケーションをブートストラップする方法に類似）、テストの準備ができたモジュールを返す。
+
+>HINT
+>`compile()`メソッドは**非同期**な為awaitする必要がある。モジュールが一度コンパイルされると、`get()`メソッドを使用して、モジュールが宣言している静的インスタンス（コントローラやプロバイダ）を取得する事ができる。
+
+`TestingModule`は[モジュール参照クラス](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-modulereference)を継承している為、スコープされたプロバイダ（遷移的orリクエストスコープ）を動的に解決する機能を持っている。`resolve()`メソッドを使う（`get()`メソッドは静的インスタンスのみを取得できる）。
+
+```ts
+const moduleRef = await Test.createTestingModule({
+  controllers: [CatsController],
+  providers: [CatsService],
+}).compile();
+
+catsService = await moduleRef.resolve(CatsService);
+```
+
+>WARNING
+>`resolve()`メソッドは、それ自身のDIコンテナのサブツリーから、プロバイダの一意のインスタンスを返す。各サブツリーは、一意のコンテキスト識別子を持っている。したがって、このメソッドを複数回呼び出してインスタンス参照を比較した時、イコールにはならない。
+
+>HINT
+>モジュールリファレンス機能の詳細については[こちら](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-modulereference)
+
+プロバイダの本番バージョンを使用する代わりに、テスト目的のためにカスタムプロバイダでオーバーライドする事ができる。たとえば生のデータベース（live database）に接続する代わりにデータベースサービスをモックする事ができる。オーバーライドについては次のセクションで説明するが、ユニットテストでも利用可能。
