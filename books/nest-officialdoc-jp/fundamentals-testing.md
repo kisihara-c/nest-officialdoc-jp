@@ -111,4 +111,153 @@ catsService = await moduleRef.resolve(CatsService);
 >HINT
 >モジュールリファレンス機能の詳細については[こちら](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-modulereference)
 
-プロバイダの本番バージョンを使用する代わりに、テスト目的のためにカスタムプロバイダでオーバーライドする事ができる。たとえば生のデータベース（live database）に接続する代わりにデータベースサービスをモックする事ができる。オーバーライドについては次のセクションで説明するが、ユニットテストでも利用可能。
+プロバイダの本番バージョンを使用する代わりに、テスト目的のために[カスタムプロバイダ](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-customproviders)でオーバーライドする事ができる。たとえば生のデータベース（live database）に接続する代わりにデータベースサービスをモックする事ができる。オーバーライドについては次のセクションで説明するが、ユニットテストでも利用可能。
+
+## E2Eテスト
+個々のモジュールやクラスに焦点を当てる単体テストとは異なり、E2Eテストはクラスやモジュールの相互作用を、より集約的なレベルで、エンドユーザと本番システムとの相互関係に近いレベルでカバーする。アプリケーションが大きくなるにつれて、各APIエンドポイントのエンドツーエンドの振る舞いの手動のテストは難しくなる。自動化されたE2Eテストは、システムの全体的な動作が正しく、プロジェクトの要件を満たしている確認に役立つ。E2Eの実行の際は、先のユニットテストの説明と同様の構成を使用する。さらに、Nestでは[Supertest](https://github.com/visionmedia/supertest)ライブラリでHTTPリクエストを簡単にシミュレートできる。
+
+```ts :
+import * as request from 'supertest';
+import { Test } from '@nestjs/testing';
+import { CatsModule } from '../../src/cats/cats.module';
+import { CatsService } from '../../src/cats/cats.service';
+import { INestApplication } from '@nestjs/common';
+
+describe('Cats', () => {
+  let app: INestApplication;
+  let catsService = { findAll: () => ['test'] };
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [CatsModule],
+    })
+      .overrideProvider(CatsService)
+      .useValue(catsService)
+      .compile();
+
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
+
+  it(`/GET cats`, () => {
+    return request(app.getHttpServer())
+      .get('/cats')
+      .expect(200)
+      .expect({
+        data: catsService.findAll(),
+      });
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+});
+```
+
+>HINT
+>HTTPアダプタとしてFastifyを使用している場合は、少し異なる設定が必要で、テスト機能は組み込みとなる。
+>
+>```ts
+>let app: NestFastifyApplication;
+>
+>beforeAll(async () => {
+>  app = moduleRef.>createNestApplication<NestFastifyApplic>ation>(
+>    new FastifyAdapter(),
+>  );
+>
+>  await app.init();
+>  await app.getHttpAdapter().getInstance>().ready();
+>})
+>
+>it(`/GET cats`, () => {
+>  return app
+>    .inject({
+>      method: 'GET',
+>      url: '/cats'
+>    }).then(result => {
+>      expect(result.statusCode).toEqual>(200)
+>      expect(result.payload).toEqual(/* >expectedPayload */)
+>    });
+>})
+>```
+
+この例では説明済みの概念のいくつかを構成させている。先に使用した`compile()`メソッドに加えて、Nestの完全な起動環境をインスタンス化する為に、`createNestApplication()`メソッドを使用している。実行中のアプリへの参照を`app`変数に保存し、HTTPリクエストをシミュレートするために使っている。
+
+Supertestの`request()`関数を使用してHTTPテストをシミュレートする。HTTPリクエストを実行中のNestアプリに転送したいので、`request`関数にNestの基盤となっている（Expressによって順番に渡されているであろう）HTTPリスナーへの参照を渡す。（※「ので以降」原文：so we pass the request() function a reference to the HTTP listener that underlies Nest (which, in turn, may be provided by the Express platform)）したがって、コードは`request(app.getHttpServer())`となる。`request()`の呼び出しは、ラップされたHTTPサーバーに繋がり、その先ではNestアプリに接続される。結果として、実際のHTTPリクエストを模倣するメソッドを表出させる。（※原文：The call to request() hands us a wrapped HTTP Server, now connected to the Nest app, which exposes methods to simulate an actual HTTP request. ）例えば、`request(...).get('/cats')`を使うと、ネットワーク経由で送られてくる`/cats`を取得するような実際のHTTPリクエストと同じリクエストをNestアプリに作り出す。
+
+この例では、テスト可能なハードコードを返す`CatsService`の代替（テストダブル）の実装も提供している。`overrideProvider()`を使用する。同様にNestは、ガード、インターセプター、フィルタ、パイプをオーバーライドするメソッド　`overrideGuard()`、`overrideInterceptor()`、`overrideFilter()`、`overridePipe()`を提供する。
+
+それぞれのオーバーライドメソッドは、[カスタムプロバイダ](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-customproviders)の為の記述を反映した、３つの異なるメソッドを持つオブジェクトを返す。
+
+|||
+| ---- | ---- |
+|`useClass`|（オブジェクトをオーバーライドするインスタンスを提供する為にインスタンス化される）クラスを提供する（プロバイダ、ガード等）|
+|`useValue`|オブジェクトをオーバーライドするインスタンスを提供する|
+|`useFactory`|オブジェクトをオーバーライドするインスタンスを返す関数を提供する|
+
+>HINT  
+>e2eのテストファイルはテストディレクトリ内に保管してほしい。また、拡張子は.e2e-specにて。
+
+## グローバルに登録されたエンハンサーのオーバーライド
+
+グローバルに登録されたガード（もしくはパイプ、インターセプタ、フィルタ）を持っている場合、そのエンハンサーを上書きする為にいくつか手順がある。まず本来の登録作業は以下の通り。
+
+```ts
+providers: [
+  {
+    provide: APP_GUARD,
+    useClass: JwtAuthGuard,
+  },
+],
+```
+
+これは`APP_*`トークンを介して"multi"なプロバイダとしてガードを登録している。ここで`JwtAuthGuard`を置き換えることができるようにするには、このスロットにおいてすでに存在するプロバイダを使用する必要がある。
+
+```ts
+providers: [
+  {
+    provide: APP_GUARD,
+    useExisting: JwtAuthGuard,
+  },
+  JwtAuthGuard,
+],
+```
+
+>HINT  
+>`useClass`を`useExisting`に変更した。Nestがトークンの背後でインスタンスを作成する代わりに、登録されたプロバイダを参照するようにした。
+
+こうすると、`JwtAuthGuard`は、`TestingModule`を作成する際にオーバーライドできる通常のプロバイダとして扱えるようになる。
+
+```ts
+const moduleRef = await Test.createTestingModule({
+  imports: [AppModule],
+})
+  .overrideProvider(JwtAuthGuard)
+  .useClass(MockAuthGuard)
+  .compile();
+```
+
+これで、すべてのテストはすべてのリクエストに対して`MockAuthGuard`を使用するようになった。
+
+## リクエストスコープ化されたインスタンスをテストする
+
+[リクエストスコープ](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-injectionscopes)化されたプロバイダは、入ってくる各リクエストに対して一意に作成される。インスタンスは、リクエストの処理完了後にガベージコレクションされる。これは問題だ、テスト用リクエストの為に特別に生成された依存性インジェクションのサブツリーにアクセスできない。
+
+上記のセクションに基づくと、`resolve`メソッドを使えば動的にインスタンス化されたクラスを取得できることがわかる。また、[ここ](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-modulereference#%E3%82%B9%E3%82%B3%E3%83%BC%E3%83%97%E5%8C%96%E3%81%95%E3%82%8C%E3%81%9F%E3%83%97%E3%83%AD%E3%83%90%E3%82%A4%E3%83%80%E3%81%AE%E8%A7%A3%E6%B1%BA)で説明したように、DIコンテナサブツリーのライフサイクルを制御する為に、一意のコンテキスト識別子を渡せる事もわかっている。この事をテストのコンテキストで活用するにはどうすれば良いだろう？
+
+方針は、事前にコンテキスト識別子を生成し、Nestにこの一意のIDを使って全ての受信リクエストのサブツリーを作成させる事だ。そうすれば、テスト用リクエストの為に作成されたインスタンスを取得できる。
+
+実現のため、`ContextIdFactory`で`jest.spieOn()`を使う。
+
+```ts
+const contextId = ContextIdFactory.create();
+jest
+  .spyOn(ContextIdFactory, 'getByRequest')
+  .mockImplementation(() => contextId);
+```
+
+結果、続くリクエストに対して、生成された単一のDIコンテナサブツリーにアクセスする為に`contextId`を使えるようになった。
+
+```ts
+catsService = await moduleRef.resolve(CatsService, contextId);
+```
