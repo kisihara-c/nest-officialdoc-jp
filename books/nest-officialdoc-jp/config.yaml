@@ -24,4 +24,5 @@ chapters:
   - fundamentals-executioncontext
   - fundamentals-lifecycleevents
   - fundamentals-platformagnosticism
+  - fundamentals-testing
 toc_depth: 2
