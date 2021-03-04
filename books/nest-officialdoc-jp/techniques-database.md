@@ -140,3 +140,78 @@ import { User } from './user.entity';
 })
 export class UsersModule {}
 ```
+
+このモジュールは`forFeature()`メソッドを用いて、現在のスコープに登録されているリポジトリを定義する。結果、`@InjectRepository()`デコレータを使用して、`UsersRepository`を`UsersService`にインジェクションする事ができる。
+
+```ts :users.service.ts 
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './user.entity';
+
+@Injectable()
+export class UsersService {
+  constructor(
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
+  ) {}
+
+  findAll(): Promise<User[]> {
+    return this.usersRepository.find();
+  }
+
+  findOne(id: string): Promise<User> {
+    return this.usersRepository.findOne(id);
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.usersRepository.delete(id);
+  }
+}
+```
+
+> NOTICE
+> ルートの`AppModule`に`UserModule`をインポートする事を忘れない事。
+
+`TypeOrmModule.forFeature`をインポートしたモジュール以外のリポジトリを使用したい場合は、生成されたプロバイダを再インポートする必要がある。これは、以下のようにモジュール全体をエクスポートする事で行える。
+
+```ts :users.module.ts 
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from './user.entity';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([User])],
+  exports: [TypeOrmModule]
+})
+export class UsersModule {}
+```
+
+さて、`UserHttpModule`で`UsersModule`をインポートすると、後者に属するプロバイダで`@InjectRepository(User)`を使うことができる。
+
+```ts :users-http.module.ts 
+
+import { Module } from '@nestjs/common';
+import { UsersModule } from './users.module';
+import { UsersService } from './users.service';
+import { UsersController } from './users.controller';
+
+@Module({
+  imports: [UsersModule],
+  providers: [UsersService],
+  controllers: [UsersController]
+})
+export class UserHttpModule {}
+```
+
+## リレーション
+リレーションとは、２つ以上のテーブル間の関係性の事だ。リレーションは各テーブルの共通フィールドに基づいており、多くの場合主キーと外部キーが関係している。
+
+関係には３つのタイプがある。
+
+
+|||
+| ---- | ---- |
+|一対一|主テーブルのすべての行が、外部テーブルの関連行を一つだけ持っている。このタイプのリレーションを定義するには`@OneToOne()`デコレータを使用する。|
+|一対多/多対一|主テーブル内のすべての行が外部テーブル内に、１つ以上の関連行を持つ。`@OneToMany()`、`@ManyToOne()` を使う。|
+|多対多|主テーブルの全ての行が外部テーブルの中に多くの関連行を持ち、外部テーブルの全ての行が主テーブルの中に多くの関連行を持つ。`@ManyToMany`デコレータを使用する。|
