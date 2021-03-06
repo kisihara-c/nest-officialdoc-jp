@@ -215,3 +215,52 @@ export class UserHttpModule {}
 |一対一|主テーブルのすべての行が、外部テーブルの関連行を一つだけ持っている。このタイプのリレーションを定義するには`@OneToOne()`デコレータを使用する。|
 |一対多/多対一|主テーブル内のすべての行が外部テーブル内に、１つ以上の関連行を持つ。`@OneToMany()`、`@ManyToOne()` を使う。|
 |多対多|主テーブルの全ての行が外部テーブルの中に多くの関連行を持ち、外部テーブルの全ての行が主テーブルの中に多くの関連行を持つ。`@ManyToMany`デコレータを使用する。|
+
+エンティティ内の関係を定義するには、対応するデコレータを使用する。例えば各ユーザが複数の写真を持つ場合、`@OneToMany()`デコレータを使用する。
+
+```ts :user.entity.ts
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import { Photo } from '../photos/photo.entity';
+
+@Entity()
+export class User {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  firstName: string;
+
+  @Column()
+  lastName: string;
+
+  @Column({ default: true })
+  isActive: boolean;
+
+  @OneToMany(type => Photo, photo => photo.user)
+  photos: Photo[];
+}
+```
+
+>HINT  
+>TypeORMのリレーションについての詳細は、TypeORMの[ドキュメント](https://typeorm.io/#/relations)を参照の事。
+
+## オートロードエンティティ
+
+接続オプションの`entities`配列にエンティティを手動で追加するのは面倒だ。さらに、ルートモジュールからエンティティを参照すると、アプリケーションのドメイン境界が破られて、アプリケーションの他部分に実装の詳細が漏れる原因となる。この問題を解決するために、静的なglob pathを使用できる。（例：`dist/**/*.entity{ .ts,.js}`）
+
+しかしながら、glob pathはwebpackではサポートされていない。アプリケーションをmonorepoの仲で構築している場合は使えない。代わりに別の解決策が用意されている。エンティティをおーとろーどするには、以下に示すように、設定オブジェクト（`forRoot()`メソッドに渡される）の`autLoadEntities`プロパティを`true`に設定する。
+
+```ts :app.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      ...
+      autoLoadEntities: true,
+    }),
+  ],
+})
+export class AppModule {}
+```
