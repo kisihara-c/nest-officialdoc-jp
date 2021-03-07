@@ -264,3 +264,216 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 })
 export class AppModule {}
 ```
+
+このオプションを指定すると、`forFeature()`メソッドで登録された全てのエンティティが、設定オブジェクトの`entities`配列に自動で追加される。
+
+>WARNING
+>`autoLoadEntities`の設定によっては、`forFeature()`メソッドで登録されておらずエンティティから（リレーションシップを通して）参照されているだけのエンティティには適用されない。
+
+## エンティティの定義を分ける
+
+デコレータを使用すれば、モデル内でエンティティとその行を定義できる。だが、「[エンティティスキーマ](https://typeorm.io/#/separating-entity-definition)」を利用して、別のファイル内でエンティティとその行を定義したい人もいるだろう。
+
+```ts
+import { EntitySchema } from 'typeorm';
+import { User } from './user.entity';
+
+export const UserSchema = new EntitySchema<User>({
+  name: 'User',
+  target: User,
+  columns: {
+    id: {
+      type: Number,
+      primary: true,
+      generated: true,
+    },
+    firstName: {
+      type: String,
+    },
+    lastName: {
+      type: String,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  relations: {
+    photos: {
+      type: 'one-to-many',
+      target: 'Photo', // the name of the PhotoSchema
+    },
+  },
+});
+```
+
+>WARNING  
+>`target`オプションを指定した場合、`name`オプションの値はターゲットクラスの名前と同じでなければならない。`target`を指定しない場合は任意の名前を使用可能。
+
+Nestでは、Entityを置ける場所ならどこでも（wherever an Entity is expected）EntitySchemeインスタンスを使用可能。
+
+例：
+
+```ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UserSchema } from './user.schema';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([UserSchema])],
+  providers: [UsersService],
+  controllers: [UsersController],
+})
+export class UsersModule {}
+```
+
+## トランザクション
+
+データベーストランザクションとは、データベース管理システム内でデータベースに対して実行される作業の単位を表す（[詳細](https://en.wikipedia.org/wiki/Database_transaction)）。そして、他のトランザクションとは独立し首尾一貫している信頼性の高い形で実行される。
+
+[TypeORMのトランザクション](https://typeorm.io/#/transactions)を扱うためには、多くの異なる戦略がある。オススメは`QueryRunner`クラスだ。トランザクションについての完全なコントロールが行える。
+
+まず通常の方法で`Connection`オブジェクトをクラスに注入する必要がある。
+
+```ts
+@Injectable()
+export class UsersService {
+  constructor(private connection: Connection) {}
+}
+```
+
+>HINT  
+>`Connection`クラスは`typeorm`パッケージからインポートする。
+
+ではこのオブジェクトを使ってトランザクションを作成しよう。
+
+```ts
+
+async createMany(users: User[]) {
+  const queryRunner = this.connection.createQueryRunner();
+
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+  try {
+    await queryRunner.manager.save(users[0]);
+    await queryRunner.manager.save(users[1]);
+
+    await queryRunner.commitTransaction();
+  } catch (err) {
+    // エラーが発生したので変更をロールバック
+    await queryRunner.rollbackTransaction();
+  } finally {
+    // 手動でインスタンス化されたをreleaseする必要がある
+    await queryRunner.release();
+  }
+}
+```
+
+>HINT  
+>`connection`は`QueryRunner`の為だけに作られる事に注意。しかし、このクラスのテストのためには`Connection`オブジェクト全体をモックする必要がある（複数のメソッドを表出している）。そこで、ヘルパーファクトリクラス（例：`QueryRunnerFactory`）を使い、トランザクションを可能にするために必要なメソッドの特定のセットを持つ、インターフェイスを定義する事を勧める。このテクニックを使うと、メソッドのモックがすごく簡単になる。
+
+もしくは`Connection`オブジェクトのトランザクションメソッドを使用してコールバックスタイルのアプローチを使用する事もできる（[詳細](https://typeorm.io/#/transactions/creating-and-using-transactions)）。
+
+```ts
+async createMany(users: User[]) {
+  await this.connection.transaction(async manager => {
+    await manager.save(users[0]);
+    await manager.save(users[1]);
+  });
+}
+```
+
+デコレータを使ってトランザクションを制御する（`@Transaction()`や`TransactionManager()`）のは勧められない。
+
+## サブスクライバ
+TypeORMの[サブスクライバ](https://typeorm.io/#/listeners-and-subscribers/what-is-a-subscriber)を使うと特定のエンティティイベントをlistenできる。
+
+```ts
+import {
+  Connection,
+  EntitySubscriberInterface,
+  EventSubscriber,
+  InsertEvent,
+} from 'typeorm';
+import { User } from './user.entity';
+
+@EventSubscriber()
+export class UserSubscriber implements EntitySubscriberInterface<User> {
+  constructor(connection: Connection) {
+    connection.subscribers.push(this);
+  }
+
+  listenTo() {
+    return User;
+  }
+
+  beforeInsert(event: InsertEvent<User>) {
+    console.log(`BEFORE USER INSERTED: `, event.entity);
+  }
+}
+```
+
+> WARNING
+> イベントサブスクライバはリクエストスコープ化できない。
+
+`providers`配列に`UserSubscriber`クラスを追加しよう。
+
+```ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from './user.entity';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+import { UserSubscriber } from './user.subscriber';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([User])],
+  providers: [UsersService, UserSubscriber],
+  controllers: [UsersController],
+})
+export class UsersModule {}
+```
+
+>HINT
+>エンティティサブスクライバの詳細は[こちら](https://typeorm.io/#/listeners-and-subscribers/what-is-a-subscriber)
+
+## マイグレーション
+[マイグレーション](https://typeorm.io/#/migrations)はデータベース内の既存のデータを保持しつつ、アプリケーションのデータモデルと動悸させる為、データベーススキーマを段階的に更新する方法を提供する。マイグレーションの生成・実行・復帰の為に、TypeORMは専用の[CLI](https://typeorm.io/#/migrations/creating-a-new-migration)を提供する。
+
+マイグレーションクラスはNestアプリケーションのソースコードから分離されている。そのライフサイクルはTypeORM CLIによって管理される。したがって、依存性のインジェクションやその他Nest特有の昨日をマイグレーションで利用する事はできない。マイグレーションの詳細は、[TypeORMのドキュメント](https://typeorm.io/#/migrations/creating-a-new-migration)にて。
+
+## マルチプルデータベース
+
+プロジェクトによっては複数のデータベース接続が必要となる事もある。このモジュールを使えば実現できる。複数の接続を使用するには、まず接続を作成する。この場合、接続の命名が**必須**となる。
+
+独自のデータベースに保存されている`Album`エンティティがあるとする。
+
+```ts
+const defaultOptions = {
+  type: 'postgres',
+  port: 5432,
+  username: 'user',
+  password: 'password',
+  database: 'db',
+  synchronize: true,
+};
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      ...defaultOptions,
+      host: 'user_db_host',
+      entities: [User],
+    }),
+    TypeOrmModule.forRoot({
+      ...defaultOptions,
+      name: 'albumsConnection',
+      host: 'album_db_host',
+      entities: [Album],
+    }),
+  ],
+})
+export class AppModule {}
+```
