@@ -477,3 +477,188 @@ const defaultOptions = {
 })
 export class AppModule {}
 ```
+
+>NOTICE  
+>接続に名前を設定しない場合、`default`の接続に設定される。名前を設定しないまま、もしくは同じ名前で複数の接続を持つべきではない。
+
+この時点で、`User`と`Albume`のエンティティが独自の接続で登録されている。`TypeOrmModule.forFeature()`メソッドと`@InjectRepository()`デコレータに対してどの接続を使用するか、指定しなければならない。接続名を渡さない場合は`default`に設定される。
+
+```ts
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([Album], 'albumsConnection'),
+  ],
+})
+export class AppModule {}
+```
+
+また、与えられた接続の`Connection`や`EntityManager`をインジェクションする事もできる。
+
+```ts
+@Injectable()
+export class AlbumsService {
+  constructor(
+    @InjectConnection('albumsConnection')
+    private connection: Connection,
+    @InjectEntityManager('albumsConnection')
+    private entityManager: EntityManager,
+  ) {}
+}
+```
+
+プロバイダに任意のConnectionをインジェクションする事も可能だ。
+
+```ts
+@Module({
+  providers: [
+    {
+      provide: AlbumsService,
+      useFactory: (albumsConnection: Connection) => {
+        return new AlbumsService(albumsConnection);
+      },
+      inject: [getConnectionToken('albumsConnection')],
+    },
+  ],
+})
+export class AlbumsModule {}
+```
+
+## テスト
+アプリケーションの単体テストを行う場合、通常はデータベースへの接続を避け、テストスイートを独立させて実行プロセスを可能な限り保ちたくなる。しかし我々のクラスが接続インスタンスから引き出されるリポジトリに依存している場合もある。どうすればいいだろう？　解決策はモックリポジトリを作成する事だ。[カスタムプロバイダ](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-customproviders)を設定しよう。登録された各リポジトリは自動的に[<EntytyName>Repository]として表出する。
+
+`@nestjs/typeorm`パッケージは与えられたエンティティに基づいて用意されたトークンを返す`getRepositoryToken()`関数を持っている。
+
+```ts
+@Module({
+  providers: [
+    UsersService,
+    {
+      provide: getRepositoryToken(User),
+      useValue: mockRepository,
+    },
+  ],
+})
+export class UsersModule {}
+```
+
+これで、`mockRepository`が`UsersRepository`の代替として使用されるようになる。任意のクラスが`@InjectRepository()`デコレータを使用して`UsersRepository`を要求すると、Nestは登録された`mockRepoitory`オブジェクトを使用する。
+
+## カスタムリポジトリ
+TypeORMは**カスタムリポジトリ**という機能を提供している。基礎となるリポジトリクラスを拡張したり、いくつかの特別なメソッドを使って機能強化できる。詳細は[こちら](https://typeorm.io/#/custom-repository)。
+
+カスタムリポジトリを作るためには、`@EntityRepository()`デコレータを使い、`Repository`クラスを拡張する。
+
+```ts 
+@EntityRepository(Author)
+export class AuthorRepository extends Repository<Author> {}
+```
+
+>HINT
+>`@EntityRepository()`、`Repository`はそれぞれ`typeorm`パッケージからインポートしている。
+
+クラスを作成したら、次はインスタンス化の責任をNestに委譲する。そのためには、`TypeOrm.forFeature()`メソッドに`AuthorRepository`クラスを渡す必要がある。
+
+```ts
+@Module({
+  imports: [TypeOrmModule.forFeature([AuthorRepository])],
+  controller: [AuthorController],
+  providers: [AuthorService],
+})
+export class AuthorModule {}
+```
+
+後は、以下のような構成でリポジトリをインジェクションするだけだ。
+
+```ts
+@Injectable()
+export class AuthorService {
+  constructor(private authorRepository: AuthorRepository) {}
+}
+```
+
+## Asyncの設定
+リポジトリモジュールのオプションを静的に渡すのではなく、非同期に渡したい場合があるかもしれない。この場合は`forRootAsync()`メソッドを使用する。asyncの設定に対して複数の方法を提供するメソッドだ。
+
+まずファクトリー関数を使う方法がある。
+
+```ts
+TypeOrmModule.forRootAsync({
+  useFactory: () => ({
+    type: 'mysql',
+    host: 'localhost',
+    port: 3306,
+    username: 'root',
+    password: 'root',
+    database: 'test',
+    entities: [__dirname + '/**/*.entity{.ts,.js}'],
+    synchronize: true,
+  }),
+});
+```
+
+ファクトリーは他の非同期プロバイダと同じように動作する（例：非同期にでき、依存性のインジェクションが可能）。
+
+```ts
+TypeOrmModule.forRootAsync({
+  imports: [ConfigModule],
+  useFactory: (configService: ConfigService) => ({
+    type: 'mysql',
+    host: configService.get('HOST'),
+    port: +configService.get<number>('PORT'),
+    username: configService.get('USERNAME'),
+    password: configService.get('PASSWORD'),
+    database: configService.get('DATABASE'),
+    entities: [__dirname + '/**/*.entity{.ts,.js}'],
+    synchronize: true,
+  }),
+  inject: [ConfigService],
+});
+```
+
+あるいは、`useClass`構文を使う事もできる。
+
+```ts
+TypeOrmModule.forRootAsync({
+  useClass: TypeOrmConfigService,
+});
+```
+
+上記のコードでは、`TypeOrmModule`内に`TypeOrmConfigService`をインスタンス化し、それを使用して`createTypeOrmOptions()`を呼び出してオプションオブジェクトを提供している。これは、以下に示すように、`TypeOrmConfigService`が`TypeOrmOptionsFactory`インターフェイスを実装しなければならない事を意味する。
+
+```ts
+@Injectable()
+class TypeOrmConfigService implements TypeOrmOptionsFactory {
+  createTypeOrmOptions(): TypeOrmModuleOptions {
+    return {
+      type: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      username: 'root',
+      password: 'root',
+      database: 'test',
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: true,
+    };
+  }
+}
+```
+
+`TypeOrmModule`内での`TypeOrmConfigService`の生成を止めて別のモジュールからインポートしたプロバイダを使用するには、`useExisting`構文を使用する。
+
+```ts
+TypeOrmModule.forRootAsync({
+  imports: [ConfigModule],
+  useExisting: ConfigService,
+});
+```
+
+このコードは`useClass`と同様に動作する。重要なのは、`TypeOrmModule`がインポートされたモジュールを検索し、既存の`ConfigService`を再利用する事だ。
+
+>HINT
+>`name`プロパティが`useFactory`、`useClass`、`useValue`プロパティと同じレベルで定義されている事を確認の事。これにより、Nestは適切なインジェクショントークンの下で適切に接続を登録できる。
+
+## 例
+動くサンプルは[こちら](https://github.com/nestjs/nest/tree/master/sample/05-sql-typeorm)
+
+## Sequelizeのインテグレーション
