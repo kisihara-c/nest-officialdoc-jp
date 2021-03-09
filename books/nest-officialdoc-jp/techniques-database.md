@@ -662,3 +662,80 @@ TypeOrmModule.forRootAsync({
 動くサンプルは[こちら](https://github.com/nestjs/nest/tree/master/sample/05-sql-typeorm)
 
 ## Sequelizeのインテグレーション
+もう一つの選択肢として、`@nestjs/sequelize`パッケージからORM [Sequelize](https://sequelize.org/)を使用可能。加えてここでは、エンティティを宣言的に定義するためのデコレータを追加で提供している[sequelize-typescript ](https://github.com/RobinBuschmann/sequelize-typescript)を使用する。
+
+まず必要な依存関係をインストールしよう。この章では一般的なMySQLを使用するが、SequelizeはPostgreSQL、MySQL、Microsoft SQL Server、SQLite、MariaDB等多くのデータベースをサポートしている。説明する手順はどのデータベースでも変わらない。選択したデータベースに関連するクライアントAPIライブラリをインストールするだけだ。
+
+```ts
+$ npm install --save @nestjs/sequelize sequelize sequelize-typescript mysql2
+$ npm install --save-dev @types/sequelize
+```
+
+インストールが完了したら、ルートのAppModuleに`SequelizeModule`をインポートする。
+
+```ts
+import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
+
+@Module({
+  imports: [
+    SequelizeModule.forRoot({
+      dialect: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      username: 'root',
+      password: 'root',
+      database: 'test',
+      models: [],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+`forRoot()`メソッドはSequelizeのコンストラクタで公開されている全ての設定プロパティをサポートしている（[詳細](https://sequelize.org/v5/manual/getting-started.html#setting-up-a-connection)）。加えて、以下のいくつかの追加設定プロパティがある。
+
+|||
+| ---- | ---- |
+|`retryAttempts`|データベースへの接続試行回数（デフォルト：`10`）|
+|`retryDelay`|接続を再試行するまでの時間（ms）（デフォルト：`3000`）|
+|`autoLoadModels`|`true`時モデルは自動的にロードされる（デフォルト：`false`）|
+|`keepConnectionAlive`|`true`時、アプリケーションのシャットダウン時に接続を閉じない（デフォルトはfalse）|
+|`synchronize`|`true`時、自動的にロードされたモデルが同期される（デフォルト：`false`）|
+
+これが完了すれば、（モジュールを全くインポートする必要なく（without needing to import any module））`Sequelize`オブジェクトがプロジェクト全体を通してインジェクション出来るようになる。
+
+例：
+
+```ts
+import { Injectable } from '@nestjs/common';
+import { Sequelize } from 'sequelize-typescript';
+
+@Injectable()
+export class AppService {
+  constructor(private sequelize: Sequelize) {}
+}
+```
+
+## モデル
+
+SequelizeはActive Recordパターンを実装している。このパターンではモデルクラスを直接使用してデータベースと対話する。例を挙げるには少なくとも１つモデルが必要だ。`User`モデルを定義してみよう。
+
+```ts :user.model.ts 
+import { Column, Model, Table } from 'sequelize-typescript';
+
+@Table
+export class User extends Model<User> {
+  @Column
+  firstName: string;
+
+  @Column
+  lastName: string;
+
+  @Column({ defaultValue: true })
+  isActive: boolean;
+}
+```
+
+>HINT
+>利用可能なデコレータについての[詳細](https://github.com/RobinBuschmann/sequelize-typescript#column)
