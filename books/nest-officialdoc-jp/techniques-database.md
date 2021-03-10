@@ -739,3 +739,95 @@ export class User extends Model<User> {
 
 >HINT
 >利用可能なデコレータについての[詳細](https://github.com/RobinBuschmann/sequelize-typescript#column)
+
+`User`モデルのファイルは`users`ディレクトリに置かれる。このディレクトリには`UsersModule`に関するすべてのファイルが含まれている。モデルファイルをどこに置くかは自由だが、ドメインの近く、つまり対応するモジュールのディレクトリに作成することを勧める。
+
+`User`モデルを使用するには、モジュールの`forRoot()`メソッドのオプションの中で`models`配列にそれを挿入して、Sequelizeで読む込む必要がある。
+
+```ts :app.module.ts 
+import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
+import { User } from './users/user.model';
+
+@Module({
+  imports: [
+    SequelizeModule.forRoot({
+      dialect: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      username: 'root',
+      password: 'root',
+      database: 'test',
+      models: [User],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+次に、`UsersModule`を見てみよう。
+
+```ts :users.module.ts 
+import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
+import { User } from './user.model';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+
+@Module({
+  imports: [SequelizeModule.forFeature([User])],
+  providers: [UsersService],
+  controllers: [UsersController],
+})
+export class UsersModule {}
+```
+
+このモジュールでは、`foreFeature()`メソッドを使用して、現在のスコープに登録されるモデルを定義している。そうすれば、`@InjectModel()`デコレータを使って`UserModel`を`UsersService`にインジェクションできる。
+
+```ts :users.service.ts 
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/sequelize';
+import { User } from './user.model';
+
+@Injectable()
+export class UsersService {
+  constructor(
+    @InjectModel(User)
+    private userModel: typeof User,
+  ) {}
+
+  async findAll(): Promise<User[]> {
+    return this.userModel.findAll();
+  }
+
+  findOne(id: string): Promise<User> {
+    return this.userModel.findOne({
+      where: {
+        id,
+      },
+    });
+  }
+
+  async remove(id: string): Promise<void> {
+    const user = await this.findOne(id);
+    await user.destroy();
+  }
+}
+```
+
+>NOTICE
+>ルートの`AppModule`に`UsersModule`をインポートする事を忘れないでほしい。
+
+`SequelizeModule.forFeature`をインポートしているモジュールの外でリポジトリを使用したい場合は、生成されたプロバイダを再インポートする必要がある。その為には、次のようにモジュール全体をエクスポートする必要がある。
+
+```ts :users.module.ts 
+import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
+import { User } from './user.entity';
+
+@Module({
+  imports: [SequelizeModule.forFeature([User])],
+  exports: [SequelizeModule]
+})
+export class UsersModule {}
+```
