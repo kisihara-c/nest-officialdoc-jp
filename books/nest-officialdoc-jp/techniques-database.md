@@ -818,7 +818,7 @@ export class UsersService {
 >NOTICE
 >ルートの`AppModule`に`UsersModule`をインポートする事を忘れないでほしい。
 
-`SequelizeModule.forFeature`をインポートしているモジュールの外でリポジトリを使用したい場合は、生成されたプロバイダを再インポートする必要がある。その為には、次のようにモジュール全体をエクスポートする必要がある。
+`SequelizeModule.forFeature`をインポートしているモジュールの外でリポジトリを使用したい場合は、生成されたプロバイダを再インポートする必要がある。その為には、次のようにモジュール全体をエクスポートする。
 
 ```ts :users.module.ts 
 import { Module } from '@nestjs/common';
@@ -830,4 +830,73 @@ import { User } from './user.entity';
   exports: [SequelizeModule]
 })
 export class UsersModule {}
+```
+
+ここで、`UserHttpModule`に`UsersModule`をインポートすると、`@InjectModel(User)`が使えるようになる。
+
+```ts :users-http.module.ts 
+import { Module } from '@nestjs/common';
+import { UsersModule } from './users.module';
+import { UsersService } from './users.service';
+import { UsersController } from './users.controller';
+
+@Module({
+  imports: [UsersModule],
+  providers: [UsersService],
+  controllers: [UsersController]
+})
+export class UserHttpModule {}
+```
+
+## リレーション
+
+リレーションとは、２つ以上のテーブル間の関係性の事だ。リレーションは各テーブルの共通フィールドに基づいており、多くの場合主キーと外部キーが関係している。
+
+関係には３つのタイプがある。
+
+（略）
+
+エンティティに関係を定義する為には、対応するデコレータを使用する。たとえば、各`User`が複数の写真を持つ事ができると定義する際は`@HasMany()`デコレータを使用する。
+
+```ts :user.entity.ts 
+import { Column, Model, Table, HasMany } from 'sequelize-typescript';
+import { Photo } from '../photos/photo.model';
+
+@Table
+export class User extends Model<User> {
+  @Column
+  firstName: string;
+
+  @Column
+  lastName: string;
+
+  @Column({ defaultValue: true })
+  isActive: boolean;
+
+  @HasMany(() => Photo)
+  photos: Photo[];
+}
+```
+
+>HINT
+>Sequelizeのassociationについての[詳細](https://github.com/RobinBuschmann/sequelize-typescript#model-association)
+
+## モデルの自動読み込み
+
+接続時の引数の`models`配列に手作業でモデルを追加していくのは面倒だ。またルートモジュールからモデルを参照すると、アプリケーションのドメイン境界が崩れ、実装の詳細が露出されてしまう。以下のように、（`forRoot()`メソッドに渡される）設定オブジェクトの`autoLoadModels`プロパティと`synchronize`プロパティをtrueに設定して、モデルを自動的にロードする。
+
+```ts :app.module.ts
+import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
+
+@Module({
+  imports: [
+    SequelizeModule.forRoot({
+      ...
+      autoLoadModels: true,
+      synchronize: true,
+    }),
+  ],
+})
+export class AppModule {}
 ```
