@@ -8,13 +8,13 @@ Nestはデータベース不可知であり、任意のSQLやNoSQLと簡単に�
 
 また、より抽象度の高い操作を行う為に、[Sequelize](https://sequelize.org/)（下記でも統合方法を説明している）、[Knex.js](https://knexjs.org/)（[チュートリアル](https://dev.to/nestjs/build-a-nestjs-module-for-knex-js-or-other-resource-based-libraries-in-5-minutes-12an)）、[TypeORM](https://github.com/typeorm/typeorm)、[Prisma](https://github.com/prisma/prisma)（recipeチャプターで詳細説明）等の汎用的Node.jsデータベース統合ライブラリ・ORMをダイレクトに使用する事もできる。
 
-便利が良いように、NestはTypeORMとSequelize、Mongooseとの緊密なインテグレーションを提供しており、それぞれ`@nestjs/typeorm`、`@nestjs/sequelize`、`@nestjs/mongoose`パッケージですぐに利用できる。これらの統合により、モデル/リポジトリのインジェクション、テスト可能性、非同期設定等NestJS特有の機能が追加され、選択したデータベースへのアクセスをより簡単に行える。
+便利の為に、NestはTypeORMとSequelize、Mongooseとの緊密なインテグレーションを提供しており、それぞれ`@nestjs/typeorm`、`@nestjs/sequelize`、`@nestjs/mongoose`パッケージですぐに利用できる。これらの統合により、モデル/リポジトリのインジェクション、テスト可能性、非同期設定等NestJS特有の機能が追加され、選択したデータベースへのアクセスをより簡単に行える。
 
 ## TypeORMのインテグレーション
 
 SQLやNoSQLデータベースとの統合のために、Nestは`@nestjs/typeorm`パッケージを提供している。NestがTypeORMを使用しているのは、TypeScriptで利用できる最も成熟したORMだからだ。TypeScriptで書かれているがゆえに、Nestフレームワークと上手く統合できる。
 
-まず必要な依存関係をインストールしよう。この章では一般的な[MySQL](https://www.mysql.com/)リレーショナルDBMSでデモを行うが、TypeORMはPostgreSQL、Oracle、Microsoft SQL Server、SQLite、さらにはMongoDBのようなNoSQLデータベースなど、多くのリレーショナル・データベースをサポートしている。この章の手順はTypeORMでサポートされているどのデータベースでも同じだ。必要なのは、選択したデータベースに関連する、クライアントAPIをインストールする事だけ。
+まず必要な依存関係をインストールしよう。この章では一般的な[MySQL](https://www.mysql.com/)RDB管理システムでデモを行うが、TypeORMはPostgreSQL、Oracle、Microsoft SQL Server、SQLite、さらにはMongoDBのようなNoSQLデータベースなど、多くのリレーショナル・データベースをサポートしている。この章の手順はTypeORMでサポートされているどのデータベースでも同じだ。必要なのは、選択したデータベースに関連する、クライアントAPIをインストールする事だけ。
 
 ```
 $ npm install --save @nestjs/typeorm typeorm mysql2
@@ -900,3 +900,238 @@ import { SequelizeModule } from '@nestjs/sequelize';
 })
 export class AppModule {}
 ```
+
+このオプションを指定すると、`forFeature()`メソッドで登録した全てのモデルが、設定オブジェクトの`models`配列に自動的に追加される。
+
+>WARNING  
+>`forFeature()`メソッドで登録されたモデルではなく、モデルから（関連付けを通して）参照されているだけのモデルは含まれないことに注意。
+
+## トランザクション
+
+データベーストランザクションとは、データベース管理システム内でデータベースに対して実行される作業の単位を表す（[詳細](https://en.wikipedia.org/wiki/Database_transaction)）。そして、他のトランザクションとは独立し首尾一貫している信頼性の高い形で実行される。
+
+[Sequelizeのトランザクション](https://typeorm.io/#/transactions)を扱うためには、多くの異なる戦略がある。以下はマネージドトランザクション（自動コールバック）の例だ。
+
+最初に、`Sequlize`オブジェクトをクラスに通常通りインジェクションする。
+
+```ts
+@Injectable()
+export class UsersService {
+  constructor(private sequelize: Sequelize) {}
+}
+```
+
+>HINT  
+>`Sequelize`クラスは`sequelize-typescript`パッケージからインポートしている。
+
+では、このオブジェクトを使ってトランザクションを作成する。
+
+```ts
+async createMany() {
+  try {
+    await this.sequelize.transaction(async t => {
+      const transactionHost = { transaction: t };
+
+      await this.userModel.create(
+          { firstName: 'Abraham', lastName: 'Lincoln' },
+          transactionHost,
+      );
+      await this.userModel.create(
+          { firstName: 'John', lastName: 'Boothe' },
+          transactionHost,
+      );
+    });
+  } catch (err) {
+    // トランザクションがロールバックされる
+    // プロミスチェーンを拒否しトランザクションコールバックを返したものはすべてエラーとなる
+    // （err is whatever rejected the promise chain returned to the transaction callback）
+    // （deepL：errは、トランザクションコールバックに返されたプロミスチェーンが拒否されたものです。）
+  }
+}
+```
+
+`Sequelize`インスタンスは、トランザクションを開始するためにのみ使用される事に注意。しかし、このクラスをテストするには、（メソッドを表出する）Sequelizeオブジェクト全体をモックする必要がある。そこで、ヘルパーファクトリクラス（例：`TransactionRunner`）を使用して、トランザクションを維持するために必要な限られたメソッドのセットを持つ、インターフェイスを定義しよう。メソッドのモックが非常に簡単になる。
+
+
+## マイグレーション
+
+[マイグレーション](https://sequelize.org/v5/manual/migrations.html)はデータベース内の既存のデータを保持しつつ、アプリケーションのデータモデルと動悸させる為、データベーススキーマを段階的に更新する方法を提供する。マイグレーションの生成・実行・復帰の為に、Sequelizeは専用の[CLI](https://sequelize.org/v5/manual/migrations.html#the-cli)を提供する。
+
+マイグレーションクラスはNestアプリケーションのソースコードから分離されている。そのライフサイクルはSequelize CLIによって管理される。したがって、依存性のインジェクションやその他Nest特有の昨日をマイグレーションで利用する事はできない。マイグレーションの詳細は、[Sequelizeのドキュメント](https://sequelize.org/v5/manual/migrations.html#the-cli)にて。
+
+## マルチプルデータベース
+
+プロジェクトによっては、複数のデータベース接続が必要になる場合がある。まず接続を作成しよう。この場合名前付けが**必須**となる。
+
+例えば、独自のデータベースに保存されている`Album`のエンティティがあるとする。
+
+```ts
+const defaultOptions = {
+  dialect: 'postgres',
+  port: 5432,
+  username: 'user',
+  password: 'password',
+  database: 'db',
+  synchronize: true,
+};
+
+@Module({
+  imports: [
+    SequelizeModule.forRoot({
+      ...defaultOptions,
+      host: 'user_db_host',
+      models: [User],
+    }),
+    SequelizeModule.forRoot({
+      ...defaultOptions,
+      name: 'albumsConnection',
+      host: 'album_db_host',
+      models: [Album],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+>NOTICE  
+>接続に名前を設定しない場合、`default`の接続に設定される。名前を設定しないまま、もしくは同じ名前で複数の接続を持つべきではない。
+
+この時点で、`User`モデルと`Album`モデルがそれぞれのコネクションに接続されている。この状態で、`SequelizeModule.forFeature()`メソッドと`@InjectModel()`デコレータにどの接続を使うか伝える必要がある。接続名を渡さなかった場合は`default`の接続が使用される。
+
+```ts
+@Module({
+  imports: [
+    SequelizeModule.forFeature([User]),
+    SequelizeModule.forFeature([Album], 'albumsConnection'),
+  ],
+})
+export class AppModule {}
+```
+
+また、特定の接続に対して`Sequelize`インスタぬをインジェクションすることもできる。
+
+```ts
+@Injectable()
+export class AlbumsService {
+  constructor(
+    @InjectConnection('albumsConnection')
+    private sequelize: Sequelize,
+  ) {}
+}
+```
+
+どんな`Sequelize`インスタンスもプロバイダに注入する事ができる。
+
+```ts
+@Module({
+  providers: [
+    {
+      provide: AlbumsService,
+      useFactory: (albumsSequelize: Sequelize) => {
+        return new AlbumsService(albumsSequelize);
+      },
+      inject: [getConnectionToken('albumsConnection')],
+    },
+  ],
+})
+export class AlbumsModule {}
+```
+
+## テスト
+
+アプリケーションの単体テストを行う場合、通常はデータベースへの接続を避け、テストスイートを独立させて実行プロセスを可能な限り保ちたくなる。しかし我々のクラスが接続インスタンスから引き出されるリポジトリに依存している場合もある。どうすればいいだろう？　解決策はモックリポジトリを作成する事だ。[カスタムプロバイダ](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-customproviders)を設定しよう。登録された各リポジトリは自動的に`<ModelName>Model`トークンとして表出する。
+
+`@nestjs/sequelize`パッケージは与えられたエンティティに基づいて用意されたトークンを返す`getModelToken()`関数を持っている。
+
+```ts
+@Module({
+  providers: [
+    UsersService,
+    {
+      provide: getModelToken(User),
+      useValue: mockModel,
+    },
+  ],
+})
+export class UsersModule {}
+```
+
+これで`mockModel`が`UserModel`として使用されるようになった。すべてのクラスで、`InjectModel()`デコレータを使って`UserModel`を要求した時には、登録されたmockModelオブジェクトが使われる。
+
+## Asyncの設定
+`SequelizeModule`のオプションを静的にではなく非同期に渡したい場合がある。この場合は`forRootAsync()`メソッドを使う。`forRootAsync()`メソッドには、非同期設定を扱う方法がいくつか用意されている。
+
+一つの方法はファクトリー関数を使うことだ。
+
+```ts
+SequelizeModule.forRootAsync({
+  useFactory: () => ({
+    dialect: 'mysql',
+    host: 'localhost',
+    port: 3306,
+    username: 'root',
+    password: 'root',
+    database: 'test',
+    models: [],
+  }),
+});
+```
+
+ファクトリーは他の[非同期プロバイダ](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-asyncproviders)と同じように動作する（例：非同期にする事もできるし、インジェクションで依存関係を注入する事もできる）
+
+```ts
+SequelizeModule.forRootAsync({
+  imports: [ConfigModule],
+  useFactory: (configService: ConfigService) => ({
+    dialect: 'mysql',
+    host: configService.get('HOST'),
+    port: +configService.get('PORT'),
+    username: configService.get('USERNAME'),
+    password: configService.get('PASSWORD'),
+    database: configService.get('DATABASE'),
+    models: [],
+  }),
+  inject: [ConfigService],
+});
+```
+
+`useClass`構文を使う事もできる。
+
+```ts
+SequelizeModule.forRootAsync({
+  useClass: SequelizeConfigService,
+});
+```
+
+上記のコードでは、`SequelizeModule`内で`SequelizeConfigService`をインスタンス化し、それを使用して`createSequelizeOptions()`を呼び出してオプションオブジェクトを提供する。この場合、`SequelizeConfigService`は以下のように`SequelizeOptionsFactory`インターフェイスを実装する必要がある事に注意。
+
+```ts
+@Injectable()
+class SequelizeConfigService implements SequelizeOptionsFactory {
+  createSequelizeOptions(): SequelizeModuleOptions {
+    return {
+      dialect: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      username: 'root',
+      password: 'root',
+      database: 'test',
+      models: [],
+    };
+  }
+}
+```
+
+`SequelizeModule`内で`SequelizeConfigService`を作らず、別のモジュールからインポートされたプロバイダを使用するには、`useExisting`構文を使う。
+
+```ts
+SequelizeModule.forRootAsync({
+  imports: [ConfigModule],
+  useExisting: ConfigService,
+});
+```
+
+`SequelizeModule`は、新しい`ConfigService`をインスタンス化するのではなく、既存の`ConfigService`を再利用するために、インポートされたモジュールを検索する。
+
+## サンプル
+実際に動作するサンプルは[こちら](https://github.com/nestjs/nest/tree/master/sample/07-sequelize)
