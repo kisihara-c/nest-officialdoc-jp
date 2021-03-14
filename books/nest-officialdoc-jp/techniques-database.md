@@ -6,9 +6,9 @@ title: techniques-database
 
 Nestはデータベース不可知であり、任意のSQLやNoSQLと簡単に統合できる。好みに応じて、いくらかの選択肢がある。最も一般的なレベルでNestをデータベースに接続するなら、[Express](https://expressjs.com/en/guide/database-integration.html)やFastifyと同様、データベース用の適切なNode.jsドライバを読み込むだけだ。
 
-また、より抽象度の高い操作を行う為に、[Sequelize](https://sequelize.org/)（下記でも統合方法を説明している）、[Knex.js](https://knexjs.org/)（[チュートリアル](https://dev.to/nestjs/build-a-nestjs-module-for-knex-js-or-other-resource-based-libraries-in-5-minutes-12an)）、[TypeORM](https://github.com/typeorm/typeorm)、[Prisma](https://github.com/prisma/prisma)（recipeチャプターで詳細説明）等の汎用的Node.jsデータベース統合ライブラリ・ORMをダイレクトに使用する事もできる。
+また、より抽象度の高い操作を行う為に、[Sequelize](https://sequelize.org/)（下記でも統合方法を説明している）、[Knex.js](https://knexjs.org/)（[チュートリアル](https://dev.to/nestjs/build-a-nestjs-module-for-knex-js-or-other-resource-based-libraries-in-5-minutes-12an)）、[TypeORM](https://github.com/typeorm/typeorm)、[Prisma](https://github.com/prisma/prisma)（recipeチャプターで詳細説明）等の汎用的Node.jsデータベース統合**ライブラリ**・ORMをダイレクトに使用する事もできる。
 
-便利の為に、NestはTypeORMとSequelize、Mongooseとの緊密なインテグレーションを提供しており、それぞれ`@nestjs/typeorm`、`@nestjs/sequelize`、`@nestjs/mongoose`パッケージですぐに利用できる。これらの統合により、モデル/リポジトリのインジェクション、テスト可能性、非同期設定等NestJS特有の機能が追加され、選択したデータベースへのアクセスをより簡単に行える。
+便利なように、NestはTypeORMとSequelize、Mongooseとの緊密なインテグレーションを提供しており、それぞれ`@nestjs/typeorm`、`@nestjs/sequelize`、`@nestjs/mongoose`パッケージですぐに利用できる。これらの統合により、モデル/リポジトリのインジェクション、テスト可能性、非同期設定等NestJS特有の機能が追加され、選択したデータベースへのアクセスをより簡単に行える。
 
 ## TypeORMのインテグレーション
 
@@ -43,11 +43,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 export class AppModule {}
 ```
 
-> Warning
+> Warning  
 > 静的なglob path（例：`dist/**/*.entity{ .ts,.js}`）は[Webpack](https://webpack.js.org/)では正しく動作しない。
 
-> HINT
-> `ormconfig.json`ファイルは`typeorm`ライブラリによって読み込まれることに注意してほしい。したがって、上記で説明した追加のプロパティ（`forRoot()`メソッドによって内部的にサポートされているもの。例えば、`autoLoadEntities`や`retryDelay`）は適用されない。幸い、TypeORMは接続オプションを`ORMconfig`ファイルや環境変数から読み込む`getConnectionOptions`関数を提供している。この関数を使う事でも、以下のように設定ファイルからNest特有のオプションを設定できる。
+> HINT  
+> `ormconfig.json`ファイルは`typeorm`ライブラリによって読み込まれることに注意してほしい。したがって、上記で説明した追加のプロパティ（`forRoot()`メソッドによって内部的にサポートされているもの。例：`autoLoadEntities`、`retryDelay`）は適用されない。幸い、TypeORMは接続オプションを`ORMconfig`ファイルや環境変数から読み込む`getConnectionOptions`関数を提供している。この関数を使う事でも、以下のように設定ファイルからNest特有のオプションを設定できる。
 > ```ts
 > TypeOrmModule.forRootAsync({
 > useFactory: async () =>
@@ -95,7 +95,7 @@ export class User {
 }
 ```
 
-> HINT
+> HINT  
 > エンティティについては、[TypeORM](https://typeorm.io/#/entities)のドキュメントを参照のこと。
 
 `User`エンティティファイルは、`users`ディレクトリにある。このディレクトリには`UsersModule`に関連するすべてのファイルが含まれている。モデルファイルをどこに保存するかは自由に決められるが、モデルファイルはその**ドメイン**の近く、対応するモジュールディレクトリに作成する事を勧める。
@@ -170,7 +170,7 @@ export class UsersService {
 }
 ```
 
-> NOTICE
+> NOTICE  
 > ルートの`AppModule`に`UserModule`をインポートする事を忘れない事。
 
 `TypeOrmModule.forFeature`をインポートしたモジュール以外のリポジトリを使用したい場合は、生成されたプロバイダを再インポートする必要がある。これは、以下のようにモジュール全体をエクスポートする事で行える。
@@ -248,7 +248,7 @@ export class User {
 
 接続オプションの`entities`配列にエンティティを手動で追加するのは面倒だ。さらに、ルートモジュールからエンティティを参照すると、アプリケーションのドメイン境界が破られて、アプリケーションの他部分に実装の詳細が漏れる原因となる。この問題を解決するために、静的なglob pathを使用できる。（例：`dist/**/*.entity{ .ts,.js}`）
 
-しかしながら、glob pathはwebpackではサポートされていない。アプリケーションをmonorepoの仲で構築している場合は使えない。代わりに別の解決策が用意されている。エンティティをおーとろーどするには、以下に示すように、設定オブジェクト（`forRoot()`メソッドに渡される）の`autLoadEntities`プロパティを`true`に設定する。
+しかしながら、glob pathはwebpackではサポートされていない。アプリケーションをmonorepoの仲で構築している場合は使えない。代わりに別の解決策が用意されている。エンティティをオートロードするには、以下に示すように、設定オブジェクト（`forRoot()`メソッドに渡される）の`autLoadEntities`プロパティを`true`に設定する。
 
 ```ts :app.module.ts
 import { Module } from '@nestjs/common';
@@ -267,7 +267,7 @@ export class AppModule {}
 
 このオプションを指定すると、`forFeature()`メソッドで登録された全てのエンティティが、設定オブジェクトの`entities`配列に自動で追加される。
 
->WARNING
+>WARNING  
 >`autoLoadEntities`の設定によっては、`forFeature()`メソッドで登録されておらずエンティティから（リレーションシップを通して）参照されているだけのエンティティには適用されない。
 
 ## エンティティの定義を分ける
@@ -310,7 +310,7 @@ export const UserSchema = new EntitySchema<User>({
 >WARNING  
 >`target`オプションを指定した場合、`name`オプションの値はターゲットクラスの名前と同じでなければならない。`target`を指定しない場合は任意の名前を使用可能。
 
-Nestでは、Entityを置ける場所ならどこでも（wherever an Entity is expected）EntitySchemeインスタンスを使用可能。
+Nestでは、`Entity`を置ける場所ならどこでも（wherever an Entity is expected）EntitySchemeインスタンスを使用可能。
 
 例：
 
@@ -335,7 +335,7 @@ export class UsersModule {}
 
 [TypeORMのトランザクション](https://typeorm.io/#/transactions)を扱うためには、多くの異なる戦略がある。オススメは`QueryRunner`クラスだ。トランザクションについての完全なコントロールが行える。
 
-まず通常の方法で`Connection`オブジェクトをクラスに注入する必要がある。
+まず通常の方法で`Connection`オブジェクトをクラスにインジェクションする必要がある。
 
 ```ts
 @Injectable()
@@ -365,7 +365,7 @@ async createMany(users: User[]) {
     // エラーが発生したので変更をロールバック
     await queryRunner.rollbackTransaction();
   } finally {
-    // 手動でインスタンス化されたをreleaseする必要がある
+    // 手動でインスタンス化されたqueryRunnerをreleaseする必要がある
     await queryRunner.release();
   }
 }
@@ -415,7 +415,7 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 }
 ```
 
-> WARNING
+> WARNING  
 > イベントサブスクライバはリクエストスコープ化できない。
 
 `providers`配列に`UserSubscriber`クラスを追加しよう。
@@ -436,7 +436,7 @@ import { UserSubscriber } from './user.subscriber';
 export class UsersModule {}
 ```
 
->HINT
+>HINT  
 >エンティティサブスクライバの詳細は[こちら](https://typeorm.io/#/listeners-and-subscribers/what-is-a-subscriber)
 
 ## マイグレーション
@@ -507,7 +507,7 @@ export class AlbumsService {
 }
 ```
 
-プロバイダに任意のConnectionをインジェクションする事も可能だ。
+プロバイダに任意の`Connection`をインジェクションする事も可能だ。
 
 ```ts
 @Module({
@@ -554,7 +554,7 @@ TypeORMは**カスタムリポジトリ**という機能を提供している。
 export class AuthorRepository extends Repository<Author> {}
 ```
 
->HINT
+>HINT  
 >`@EntityRepository()`、`Repository`はそれぞれ`typeorm`パッケージからインポートしている。
 
 クラスを作成したら、次はインスタンス化の責任をNestに委譲する。そのためには、`TypeOrm.forFeature()`メソッドに`AuthorRepository`クラスを渡す必要がある。
@@ -703,7 +703,7 @@ export class AppModule {}
 |`keepConnectionAlive`|`true`時、アプリケーションのシャットダウン時に接続を閉じない（デフォルトはfalse）|
 |`synchronize`|`true`時、自動的にロードされたモデルが同期される（デフォルト：`false`）|
 
-これが完了すれば、（モジュールを全くインポートする必要なく（without needing to import any module））`Sequelize`オブジェクトがプロジェクト全体を通してインジェクション出来るようになる。
+これが完了すれば、（モジュールを全くインポートする必要なく（without needing to import any module））`Sequelize`オブジェクトがプロジェクト全体を通してインジェクション可能となる。
 
 例：
 
@@ -737,7 +737,7 @@ export class User extends Model<User> {
 }
 ```
 
->HINT
+>HINT  
 >利用可能なデコレータについての[詳細](https://github.com/RobinBuschmann/sequelize-typescript#column)
 
 `User`モデルのファイルは`users`ディレクトリに置かれる。このディレクトリには`UsersModule`に関するすべてのファイルが含まれている。モデルファイルをどこに置くかは自由だが、ドメインの近く、つまり対応するモジュールのディレクトリに作成することを勧める。
@@ -815,7 +815,7 @@ export class UsersService {
 }
 ```
 
->NOTICE
+>NOTICE  
 >ルートの`AppModule`に`UsersModule`をインポートする事を忘れないでほしい。
 
 `SequelizeModule.forFeature`をインポートしているモジュールの外でリポジトリを使用したい場合は、生成されたプロバイダを再インポートする必要がある。その為には、次のようにモジュール全体をエクスポートする。
@@ -854,7 +854,7 @@ export class UserHttpModule {}
 
 関係には３つのタイプがある。
 
-（略）
+（同上、略）
 
 エンティティに関係を定義する為には、対応するデコレータを使用する。たとえば、各`User`が複数の写真を持つ事ができると定義する際は`@HasMany()`デコレータを使用する。
 
@@ -878,12 +878,12 @@ export class User extends Model<User> {
 }
 ```
 
->HINT
+>HINT  
 >Sequelizeのassociationについての[詳細](https://github.com/RobinBuschmann/sequelize-typescript#model-association)
 
 ## モデルの自動読み込み
 
-接続時の引数の`models`配列に手作業でモデルを追加していくのは面倒だ。またルートモジュールからモデルを参照すると、アプリケーションのドメイン境界が崩れ、実装の詳細が露出されてしまう。以下のように、（`forRoot()`メソッドに渡される）設定オブジェクトの`autoLoadModels`プロパティと`synchronize`プロパティをtrueに設定して、モデルを自動的にロードする。
+接続時の引数の`models`配列に手作業でモデルを追加していくのは面倒だ。またルートモジュールからモデルを参照すると、アプリケーションのドメイン境界が崩れ、実装の詳細が表出されてしまう。以下のように、（`forRoot()`メソッドに渡される）設定オブジェクトの`autoLoadModels`プロパティと`synchronize`プロパティをtrueに設定して、モデルを自動的にロードする。
 
 ```ts :app.module.ts
 import { Module } from '@nestjs/common';
@@ -910,7 +910,7 @@ export class AppModule {}
 
 データベーストランザクションとは、データベース管理システム内でデータベースに対して実行される作業の単位を表す（[詳細](https://en.wikipedia.org/wiki/Database_transaction)）。そして、他のトランザクションとは独立し首尾一貫している信頼性の高い形で実行される。
 
-[Sequelizeのトランザクション](https://typeorm.io/#/transactions)を扱うためには、多くの異なる戦略がある。以下はマネージドトランザクション（自動コールバック）の例だ。
+[Sequelizeのトランザクション](https://sequelize.org/v5/manual/transactions.html)を扱うためには、多くの異なる戦略がある。以下はマネージドトランザクション（自動コールバック）の例だ。
 
 最初に、`Sequlize`オブジェクトをクラスに通常通りインジェクションする。
 
@@ -1008,7 +1008,7 @@ export class AppModule {}
 export class AppModule {}
 ```
 
-また、特定の接続に対して`Sequelize`インスタぬをインジェクションすることもできる。
+また、特定の接続に対して`Sequelize`インスタンスをインジェクションすることもできる。
 
 ```ts
 @Injectable()
