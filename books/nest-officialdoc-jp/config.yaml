@@ -25,5 +25,5 @@ chapters:
   - fundamentals-lifecycleevents
   - fundamentals-platformagnosticism
   - fundamentals-testing
-  - techiques-database
+  - techniques-database
 toc_depth: 2
