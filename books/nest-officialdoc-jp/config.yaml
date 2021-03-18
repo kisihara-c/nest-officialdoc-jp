@@ -26,4 +26,5 @@ chapters:
   - fundamentals-platformagnosticism
   - fundamentals-testing
   - techniques-database
+  - techniques-mongo
 toc_depth: 2
