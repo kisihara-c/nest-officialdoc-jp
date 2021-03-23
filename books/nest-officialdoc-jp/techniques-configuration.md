@@ -73,3 +73,49 @@ ConfigModule.forRoot({
   ignoreEnvFile: true,
 });
 ```
+
+## モジュールをグローバルに使う
+
+`ConfigModule`を他のモジュールで使用したい場合は、（他のNestモジュールと同様）インポートする必要がある。あるいは以下のようにオプションオブジェクトの`isGlobal`プロパティを`true`に設定してグローバルモジュールとして宣言する事もできる。そうすれば、ルートモジュール（例：`AppModule`）にロードされた後、他のモジュールで`ConfigModule`をインポートする必要はない。
+
+```ts
+ConfigModule.forRoot({
+  isGlobal: true,
+});
+```
+
+## カスタムの設定ファイル
+
+より複雑なプロジェクトでは、カスタム設定ファイルを利用して、ネストした設定オブジェクトを返す事ができる。これにより、関連する設定を機能別にグループ化したり（データベース関連の設定など）、関連する設定を個別のファイルに格納して独立して管理する事が可能になる。
+
+カスタム構成ファイルは、構成オブジェクトを返すファクトリー関数をエクスポートする。設定オブジェクトには、自由にネストされたプレーンなJavaScriptオブジェクトを使用できる。`process.env`オブジェクトには、完全に解決された環境変数のkey/valueペアが含まれる。（`.env`ファイルと、外部で定義された変数は、上述のように解決・マージされる）返された設定オブジェクトは貴方がコントロールするので、値を適切な型にキャストしたり、デフォルト値を設定する等、必要なロジックを追加する事ができる。例：
+
+```ts :config/configuration.ts 
+export default () => ({
+  port: parseInt(process.env.PORT, 10) || 3000,
+  database: {
+    host: process.env.DATABASE_HOST,
+    port: parseInt(process.env.DATABASE_PORT, 10) || 5432
+  }
+});
+```
+
+`ConfigModule.forRoot() `メソッドに渡したオプションオブジェクトの`load`プロパティを使って、このファイルを読み込む。
+
+```ts
+import configuration from './config/configuration';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      load: [configuration],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+>Notice  
+>`load`プロパティに割り当てられた値は配列だ。複数の設定ファイルを読むことができる。（例：`load:[databseConfig,authConfig]`）
+
+カスタム設定ファイルでは、YAMLファイルなどのカスタムファイルを管理する事もできる。ここではYAMLファイルでの設定の例を紹介する。
