@@ -116,6 +116,121 @@ export class AppModule {}
 ```
 
 >Notice  
->`load`プロパティに割り当てられた値は配列だ。複数の設定ファイルを読むことができる。（例：`load:[databseConfig,authConfig]`）
+>`load`プロパティに割り当てられた値は配列だ。複数の設定ファイルを読むことができる。（例：`load:[databaseConfig,authConfig]`）
 
-カスタム設定ファイルでは、YAMLファイルなどのカスタムファイルを管理する事もできる。ここではYAMLファイルでの設定の例を紹介する。
+カスタム設定ファイルでは、YAMLファイルなどのカスタムファイルを管理する事もできる。ここではYAMLファイルの設定の例を紹介する。
+
+```yaml
+http:
+  host: 'localhost'
+  port: 8080
+
+db:
+  postgres:
+    url: 'localhost'
+    port: 5432
+    database: 'yaml-db'
+
+  sqlite:
+    database: 'sqlite.db'
+```
+
+YAMLファイルは`js-yaml`パッケージで使える。
+
+```
+$ npm i js-yaml
+$ npm i -D @types/js-yaml
+```
+
+パッケージのインストールが完了したら、`yaml#load`関数を使って上記のYAMLファイルを読み込む。
+
+```ts :config/configuration.ts 
+import { readFileSync } from 'fs';
+import * as yaml from 'js-yaml';
+import { join } from 'path';
+
+const YAML_CONFIG_FILENAME = 'config.yml';
+
+export default () => {
+  return yaml.load(
+    fs.readFileSync(join(__dirname, YAML_CONFIG_FILENAME), 'utf8'),
+  ) as Record<string, any>;
+};
+```
+
+>NOTE  
+>NestCLIはビルドプロセス中に"assets"（非TSファイル）を自動的に`dist`フォルダに移動しない。YAMLファイルが自動的にコピーされるようにしたい場合は、`nest-cli.json`ファイルの`compilerOptions#assets`オブジェクトで指定する必要がある。例として、`config`フォルダが`src`フォルダと同じ階層にある場合、`compilerOptions#assets`に`"assets": [{"include": "../config/*.yaml", "outDir": "./dist/config"}]`という値を追加する。詳細は[こちら](https://docs.nestjs.com/cli/monorepo#assets)
+
+## `ConfigService`を使う
+
+`ConfigService`から設定値にアクセスするにはまず`ConfigService`をインジェクションする必要がある。他のプロバイダと同様に、`ConfigService`を含むモジュールである`ConfigModule`を、使用するモジュールにインポートする必要がある（`ConfigModule.forRoot()`メソッドに渡されるオプションオブジェクトの`isGlobal`プロパティを`true`に設定していない場合）。以下のように`feature`モジュールにインポートしてみよう。
+
+```ts :feature.module.ts 
+@Module({
+  imports: [ConfigModule],
+  // ...
+})
+```
+
+次に、標準的なコンストラクタ・インジェクションを使用して、これをインジェクションする。
+
+```ts
+constructor(private configService: ConfigService) {}
+```
+
+>HINT
+>`ConfigService`は`@nestjs/config`パッケージからインポートされている。
+
+これをクラスの中で使ってみよう。
+
+```ts
+// 環境変数をget
+const dbUser = this.configService.get<string>('DATABASE_USER');
+
+// カスタム設定変数をget
+const dbHost = this.configService.get<string>('database.host');
+```
+
+上記のように、`configService.get()`メソッドを使って変数名を渡せばシンプルな環境変数を取得できる。型を渡すことで、TypeScriptの型ヒントをつける事もできる（例：`get<string>(...)`）。get()メソッドは、上記の２番目の例のように、（カスタム設定ファイルを介して作成された）ネストしたカスタム設定オブジェクトを探索する事もできる。
+
+また、型ヒントとしてインターフェイスを使用し、ネストしたカスタム設定オブジェクト全体を取得する事もできる。
+
+```ts
+interface DatabaseConfig {
+  host: string;
+  port: number;
+}
+
+const dbConfig = this.configService.get<DatabaseConfig>('database');
+
+// こうすれば`dbConfig.port`と`dbConfig.host`を使える
+const port = dbConfig.port;
+```
+
+`get()`メソッドは省略可能な第２引数を取り、キーが存在しない場合に返されるデフォルト値を定義する。
+
+```ts
+// "database.host"が存在しない時"localhost"を使用
+const dbHost = this.configService.get<string>('database.host', 'localhost');
+```
+
+`ConfigService`には、存在しないコンフィグプロパティへのアクセスを防止するために、オプションのジェネリック（型引数）が用意されている。以下のように使ってほしい。
+
+```ts
+interface EnvironmentVariables {
+  PORT: number;
+  TIMEOUT: string;
+}
+
+// コードのどこか
+constructor(private configService: ConfigService<EnvironmentVariables>) {
+  // 有効
+  const port = this.configService.get<number>('PORT');
+
+  // URLは EnvironmentVariablesインターフェイスのプロパティではない為、無効
+  const url = this.configService.get<string>('URL');
+}
+```
+
+>NOTICE  
+>上記の`database.host`の例のように、コンフィグにネストされたプロパティがある場合、インターフェイスにはマッチする`'database.host': string;`が必要。なかったらTypeScriptエラーが発生。
