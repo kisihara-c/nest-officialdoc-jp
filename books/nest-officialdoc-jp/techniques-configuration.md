@@ -234,3 +234,34 @@ constructor(private configService: ConfigService<EnvironmentVariables>) {
 
 >NOTICE  
 >上記の`database.host`の例のように、コンフィグにネストされたプロパティがある場合、インターフェイスにはマッチする`'database.host': string;`が必要。なかったらTypeScriptエラーが発生。
+
+## 設定の名前空間
+
+`ConfigModule`では、上記のカスタム設定ファイルセクションで示したように、複数のカスタム設定ファイルを定義してロードできる。同じ場所で示したように、ネストした設定オブジェクトを使って、複雑な設定オブジェクトの階層管理を行える。また、以下のように`registerAs()`関数で「名前空間」化した構成オブジェクトを返す事もできる。
+
+```ts :config/database.config.ts 
+export default registerAs('database', () => ({
+  host: process.env.DATABASE_HOST,
+  port: process.env.DATABASE_PORT || 5432
+}));
+```
+
+カスタム設定ファイルを使う場合と同様、`registerAs()`ファクトリ関数の内部では、`process.env`オブジェクトに、完全に解決された環境変数のkey/valueペアが格納される（上記のように、`.env`ファイルと外部で定義された変数が解決・マージされる）。
+
+>HINT
+>`registerAs`関数は`@nestjs/config`パッケージからエクスポートされる。
+
+`forRoot()`メソッドの`options`オブジェクト内`load`プロパティを使用し、カスタム設定ファイルを読み込むのと同じ方法で名前空間の設定を読みこんでみよう。
+
+```ts :
+import databaseConfig from './config/database.config';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      load: [databaseConfig],
+    }),
+  ],
+})
+export class AppModule {}
+```
