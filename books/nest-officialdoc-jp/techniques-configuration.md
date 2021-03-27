@@ -248,7 +248,7 @@ export default registerAs('database', () => ({
 
 カスタム設定ファイルを使う場合と同様、`registerAs()`ファクトリ関数の内部では、`process.env`オブジェクトに、完全に解決された環境変数のkey/valueペアが格納される（上記のように、`.env`ファイルと外部で定義された変数が解決・マージされる）。
 
->HINT
+>HINT  
 >`registerAs`関数は`@nestjs/config`パッケージからエクスポートされる。
 
 `forRoot()`メソッドの`options`オブジェクト内`load`プロパティを使用し、カスタム設定ファイルを読み込むのと同じ方法で名前空間の設定を読みこんでみよう。
@@ -264,4 +264,160 @@ import databaseConfig from './config/database.config';
   ],
 })
 export class AppModule {}
+```
+
+さて、データベースの名前空間から`host`変数を取得するには、ドット記法を使う。プロパティ名のプレフィックスとして`database`を使用し、（`registerAs()`関数の第一引数として渡される）名前空間の名前に対応させる。
+
+```ts
+const dbHost = this.configService.get<string>('database.host');
+```
+
+データベースの名前空間を直接インジェクションするという方法もある。こうすると強力な型付けの恩恵を受ける事ができる。
+
+```ts
+constructor(
+  @Inject(databaseConfig.KEY)
+  private dbConfig: ConfigType<typeof databaseConfig>,
+) {}
+```
+
+>HINT  
+>`ConfigType`は`@nestjs/config`パッケージからエクスポートされる。
+
+## 環境変数のキャッシュ
+`process.env`へのアクセスには時間がかかる。`ConfigModule.forRoot()`に渡されるオプションオブジェクトに`cache`プロパティを設定する事で、`process.env`に格納されている変数に関して`ConfigService#get`メソッドのパフォーマンスを向上させる事ができる。
+
+```ts
+ConfigModule.forRoot({
+  cache: true,
+});
+```
+
+## 部分的レジストレーション
+
+ここまでは`forRoot()`メソッドを使ってルートモジュール（`AppModule`など）の設定ファイルを処理してきた。しかし、プロジェクトの構造がもっと複雑で、機能別の設定ファイルが複数の異なるディレクトリに置かれている場合もあるかもしれない。`@nestjs/config`パッケージでは、ルートモジュールでこれらを全て読み込むのではなく、各機能モジュールに関する設定ファイルのみを参照する**部分的レジストレーション**機能を提供している。部分的レジストレーションを行うには、以下のように、機能モジュール内で`forFeture()`静的メソッドを使用してほしい。
+
+```ts
+import databaseConfig from './config/database.config';
+
+@Module({
+  imports: [ConfigModule.forFeature(databaseConfig)],
+})
+export class DatabaseModule {}
+```
+
+>WARNING  
+>状況次第で、部分的レジストレーションによって読み込まれたプロパティに、コンストラクタではなく`onModuleInit()`フックを使ってアクセスする必要がある。これは、`forFeature()`メソッドがモジュールの初期化中に実行され、モジュール初期化の順序が不定である為だ。他のモジュールから読み込まれた値にアクセスすると、コンストラクタでは、その設定が依存するモジュールがまだイニシャライズされていない可能性がある。`onModuleInit()`メソッドは依存する全てのモジュールが初期化された後にのみ実行される。安全だ。
+
+## スキーマバリデーション
+
+アプリケーションの起動時に、必要な環境変数が提供されていない場合や、特定の検証ルールを満たしていない場合には、例外を発生させるのが標準的なやり方だ。`@nestjs/config`パッケージでは、２通りの方法で行える。
+
+- [Joi](https://github.com/sideway/joi)組み込みバリデータ　Joiではオブジェクトスキーマを定義して、それに対してJavaScriptオブジェクトを検証する。
+- 環境変数を入力して受け取るカスタム`validate()`関数
+
+Joiを使うにはパッケージをインストールしなければならない。
+
+```
+$ npm install --save joi
+```
+
+>Notice  
+>最新版のJoiは、Node v12以降のバージョンを必要とする。古いバージョンを持っている場合は、v16.1.8をインストールしてほしい。これはビルド時にエラーが発生するv17.0.2がリリースされた後だからだ。詳細については、Joi v17.0.0の[リリースノート](https://github.com/sideway/joi/issues/2262)を参照の事。
+
+Joiの検証スキーマを定義し、以下のように`forRoot()`メソッドのオプションオブジェクトの`validationSchema`プロパティを介して渡すことができる。
+
+```ts :app.module.ts 
+import * as Joi from 'joi';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      validationSchema: Joi.object({
+        NODE_ENV: Joi.string()
+          .valid('development', 'production', 'test', 'provision')
+          .default('development'),
+        PORT: Joi.number().default(3000),
+      }),
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+デフォルトでは、全てのスキーマのキーは省略可能とみなされる。ここでは、`NODE_ENV`と`PORT`にデフォルト値を設定している。この値は、環境（`.env`ファイルかプロセス環境）内でこれらの変数が提供されていない場合使われる。また、`required()`バリデーション・メソッドを使用して、環境内（同上）で値が定義されている必要を明示する事もできる。この場合、環境内で該当の変数が提供されていないと、バリデーションの際に例外が発生する。検証スキーマの構築方法の詳細については、[Joiのバリデーションメソッド](https://joi.dev/api/?v=17.3.0#example)を参照の事。
+
+デフォルトでは、未知の環境変数（スキーマにキーが存在しない環境変数）が許可されて、バリデーションエクセプションは発生しない。デフォルトでは全てのバリデーションエラーが報告される。これらの動作を変更するには、`forRoot()`オプションオブジェクトの`validationOptions`キーにオプションオブジェクトを渡す。このオプションオブジェクトは、[Joiのバリデーションオプション](https://joi.dev/api/?v=17.3.0#anyvalidatevalue-options)で提供される標準的なバリデーションオプションのプロパティを含む事ができる。例えば上記の２つの設定を切り替えるには、以下のオプションを通す。
+
+```ts :app.module.ts 
+import * as Joi from 'joi';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      validationSchema: Joi.object({
+        NODE_ENV: Joi.string()
+          .valid('development', 'production', 'test', 'provision')
+          .default('development'),
+        PORT: Joi.number().default(3000),
+      }),
+      validationOptions: {
+        allowUnknown: false,
+        abortEarly: true,
+      },
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+`@nestjs/config`パッケージは以下のデフォルト設定を使っている。
+
+- allowUnknown　環境変数の未知のキーを許可するかどうかを制御。デフォルトは`true`
+- abortEarly　`true`時最初のエラーでバリデーションを停止、`false`時全てのエラーを返す。デフォルトは`false`
+
+注意としては、`validationOptions`オブジェクトを渡す事にすると、明示的に渡さなかった設定は、（`@nestjs/config`のデフォルトではなく）Joiの標準的なデフォルトになる事。例えば、カスタム`validationOptions`オブジェクトで`allowUnknowns`を指定しないままにしておくと、Joiのデフォルト値である`false`になる。したがって、これらの設定の両方をカスタムオブジェクトで指定するのが最も安全だろう。
+
+## カスタムバリデーション関数
+
+別の手段として、同期型のバリデーション関数を指定する事もできる。この関数は、（`env`ファイルとプロセスからの）環境変数を含むオブジェクトを受け取り、バリデーション済みの環境変数を含むオブジェクトを返す為、必要に応じて環境変数をコンバート/ミューテートする事ができる。この関数がエラーを出した場合、アプリケーションの起動が防がれる。
+
+この例では`class-transformer`と`class-validator`のパッケージを使って勧める。まず定義する必要がある。
+
+- バリデーション制約を持つクラス
+- `plainToClass`関数と`validateSync`関数を使った`validate`関数
+
+
+```ts :env.validation.ts 
+import { plainToClass } from 'class-transformer';
+import { IsEnum, IsNumber, validateSync } from 'class-validator';
+
+enum Environment {
+  Development = "development",
+  Production = "production",
+  Test = "test",
+  Provision = "provision",
+}
+
+class EnvironmentVariables {
+  @IsEnum(Environment)
+  NODE_ENV: Environment;
+
+  @IsNumber()
+  PORT: number;
+}
+
+export function validate(config: Record<string, unknown>) {
+  const validatedConfig = plainToClass(
+    EnvironmentVariables,
+    config,
+    { enableImplicitConversion: true },
+  );
+  const errors = validateSync(validatedConfig, { skipMissingProperties: false });
+
+  if (errors.length > 0) {
+    throw new Error(errors.toString());
+  }
+  return validatedConfig;
+}
 ```
