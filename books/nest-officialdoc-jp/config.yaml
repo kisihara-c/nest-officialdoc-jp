@@ -27,4 +27,5 @@ chapters:
   - fundamentals-testing
   - techniques-database
   - techniques-mongo
+  - techniques-configuration
 toc_depth: 2

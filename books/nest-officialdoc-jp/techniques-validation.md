@@ -1,0 +1,5 @@
+---
+title: techniques-validation
+---
+
+# バリデーション

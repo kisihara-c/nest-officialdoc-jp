@@ -4,7 +4,7 @@ title: techniques-configuration
 
 # 設定
 
-アプリケーションはしばしば異なる**環境**で動作する。環境に応じて異なる構成設定を使用する必要がある。例えば通常ローカル環境ではローカルのDBインスタンスでのみ有効な特定のデータベース認証情報に依存している。本番環境では、別のDB資格情報のセットを使う。（原文、ここでamlという文字列が入ってるけど訳出できず…）ベストプラクティスは、[環境変数を保存](https://12factor.net/config)する事だ。外部で定義された環境変数は、`process.env`グローバル変数を通じてNode.js内部で確認できる。環境変数をそれぞれの環境で個別に設定する事で、複数の環境の問題を解決可能となる。特に、これらの値を簡単にモックしたり変更したりする必要がある開発環境やテスト環境では、あっという間に扱いにくくなってしまう。
+アプリケーションはしばしば異なる**環境**で動作する。環境に応じて異なる構成設定を使用する必要がある。例えば通常ローカル環境ではローカルのDBインスタンスでのみ有効な特定のデータベース認証情報に依存している。本番環境では、別のDB資格情報のセットを使う。（原文、ここでamlという文字列が入っており訳出できず…）ベストプラクティスは、[環境変数を保存](https://12factor.net/config)する事だ。外部で定義された環境変数は、`process.env`グローバル変数を通じてNode.js内部で確認できる。環境変数をそれぞれの環境で個別に設定する事で、複数の環境の問題を解決可能となる。特に、これらの値を簡単にモックしたり変更したりする必要がある開発環境やテスト環境では、あっという間に扱いにくくなってしまう。
 
 Node.jsアプリケーションでは、各環境を表すために、各キーが特定の値を表すキーと値のペアを保持する`.env`ファイルを使用するのが一般的だ。異なる環境でアプリケーションを実行するには、適切に`.env`ファイルを入れ替えるだけで良い。
 
@@ -18,7 +18,7 @@ Nestでこのテクニックを使用するには、`ConfigModule`を作成す�
 $ npm i --save @nestjs/config
 ```
 
->HINT
+>HINT  
 >`@nestjs/config`パッケージは[dotenv](https://github.com/motdotla/dotenv)を使う。
 
 ## スタートアップ
@@ -115,8 +115,8 @@ import configuration from './config/configuration';
 export class AppModule {}
 ```
 
->Notice  
->`load`プロパティに割り当てられた値は配列だ。複数の設定ファイルを読むことができる。（例：`load:[databaseConfig,authConfig]`）
+>NOTICE  
+>`load`プロパティに割り当てられる値は配列だ。複数の設定ファイルを読むことができる。（例：`load:[databaseConfig,authConfig]`）
 
 カスタム設定ファイルでは、YAMLファイルなどのカスタムファイルを管理する事もできる。ここではYAMLファイルの設定の例を紹介する。
 
@@ -163,7 +163,7 @@ export default () => {
 
 ## `ConfigService`を使う
 
-`ConfigService`から設定値にアクセスするにはまず`ConfigService`をインジェクションする必要がある。他のプロバイダと同様に、`ConfigService`を含むモジュールである`ConfigModule`を、使用するモジュールにインポートする必要がある（`ConfigModule.forRoot()`メソッドに渡されるオプションオブジェクトの`isGlobal`プロパティを`true`に設定していない場合）。以下のように`feature`モジュールにインポートしてみよう。
+`ConfigService`から設定値にアクセスするにはまずインジェクションする必要がある。他のプロバイダと同様に、`ConfigService`を含むモジュールである`ConfigModule`を、使用するモジュールにインポートする必要がある（`ConfigModule.forRoot()`メソッドに渡されるオプションオブジェクトの`isGlobal`プロパティを`true`に設定していない場合）。以下のように`feature`モジュールにインポートしてみよう。
 
 ```ts :feature.module.ts 
 @Module({
@@ -178,7 +178,7 @@ export default () => {
 constructor(private configService: ConfigService) {}
 ```
 
->HINT
+>HINT  
 >`ConfigService`は`@nestjs/config`パッケージからインポートされている。
 
 これをクラスの中で使ってみよう。
@@ -382,7 +382,7 @@ export class AppModule {}
 
 別の手段として、同期型のバリデーション関数を指定する事もできる。この関数は、（`env`ファイルとプロセスからの）環境変数を含むオブジェクトを受け取り、バリデーション済みの環境変数を含むオブジェクトを返す為、必要に応じて環境変数をコンバート/ミューテートする事ができる。この関数がエラーを出した場合、アプリケーションの起動が防がれる。
 
-この例では`class-transformer`と`class-validator`のパッケージを使って勧める。まず定義する必要がある。
+この例では`class-transformer`と`class-validator`のパッケージを使って進める。まず定義する必要がある。
 
 - バリデーション制約を持つクラス
 - `plainToClass`関数と`validateSync`関数を使った`validate`関数
@@ -420,4 +420,91 @@ export function validate(config: Record<string, unknown>) {
   }
   return validatedConfig;
 }
+```
+
+この状態で、以下のように`ConfigModule`の設定オプションとして`validate`関数を使用する。
+
+```ts :app.module.ts 
+import { validate } from './env.validation';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      validate,
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## カスタムゲッター関数
+
+`ConfigService`では、設定値をキーで取得するための汎用的な`get()`メソッドを定義している。また、より自然なコーディングスタイルを実現する為に、ゲッター関数を追加することもありうる。
+
+```ts
+@Injectable()
+export class ApiConfigService {
+  constructor(private configService: ConfigService) {}
+
+  get isAuthEnabled(): boolean {
+    return this.configService.get('AUTH_ENABLED') === 'true';
+  }
+}
+```
+
+これでゲッター関数を以下のように使える。
+
+```ts :app.service.ts
+@Injectable()
+export class AppService {
+  constructor(apiConfigService: ApiConfigService) {
+    if (apiConfigService.isAuthEnabled) {
+      // Authentication is enabled
+    }
+  }
+}
+```
+
+## 拡張可能な変数
+
+`@nestjs/config`パッケージは、環境変数の拡張をサポートしている。この技術を使うと、ある変数が他の変数の定義の中で参照されるような、ネストした環境変数を作る事ができる。例：
+
+```
+APP_URL=mywebsite.com
+SUPPORT_EMAIL=support@${APP_URL}
+```
+
+このコードでは、変数`SUPPORT_EMAIL`は「support@mywebsite.com」として解決される。`SUPPORT_EMAIL`の定義の中の、変数`APP_URL`の値を解決する為の`${...}`構文に注意。
+
+>HINT  
+>この機能の為に、`@nestjs/config`パッケージは内部的に[dotenv-expand](https://github.com/motdotla/dotenv-expand)を使っている。
+
+以下のように、`ConfigModule`の`forRoot()`メソッドに渡されるオプションオブジェクトの`expandVariables`プロパティを使用して、環境変数の展開を可能にする。
+
+```ts :app.module.ts 
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      // ...
+      expandVariables: true,
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+## `main.ts`で使う
+
+設定はサービスに保存されているが、`main.ts`ファイルでも使う事ができる。そうすれば、アプリケ０ションポートやCORSホストなどの変数を格納できる。
+
+アクセスするには、`app.get()`メソッドの後にサービスの参照を記述する必要がある。
+
+```ts
+const configService = app.get(ConfigService);
+```
+
+その後コンフィグレーションキーを指定して`get`めそっどをよびだせば、通常通り使用可能になる。
+
+```ts
+const port = configService.get('PORT');
 ```
