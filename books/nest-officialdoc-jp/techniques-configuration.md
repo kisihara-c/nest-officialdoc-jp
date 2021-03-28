@@ -503,7 +503,7 @@ export class AppModule {}
 const configService = app.get(ConfigService);
 ```
 
-その後コンフィグレーションキーを指定して`get`めそっどをよびだせば、通常通り使用可能になる。
+その後コンフィグレーションキーを指定して`get`メソッドをよびだせば、通常通り使用可能になる。
 
 ```ts
 const port = configService.get('PORT');
