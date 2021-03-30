@@ -100,3 +100,57 @@ export class CreateUserDto {
   "message": ["email must be an email"]
 }
 ```
+
+`ValidationPipe`は、リクエストbodyの検証に加えて、他のリクエストオブジェクトのプロパティにも使用できる。例えば、エンドポイントのパスで`:id`を受けたいとする。このリクエストパラメータで数字しか受け付けないようにするには、以下のコードを使う。
+
+```ts
+@Get(':id')
+findOne(@Param() params: FindOneParams) {
+  return 'This action returns a user';
+}
+```
+
+`FindOneParams`は`DTO`と同様に、class-validatorを使って検証ルールを定義した単なるクラスだ。以下のようになる。
+
+```ts
+import { IsNumberString } from 'class-validator';
+
+export class FindOneParams {
+  @IsNumberString()
+  id: number;
+}
+```
+
+## 詳細なエラーを無効にする
+
+エラーメッセージはリクエストのどこが間違っているかを説明するのに役立つ。しかし運用環境によっては、詳細なエラーを無効にしたい場合もある。この場合、`ValidationPipe`にオプション・オブジェクトを渡す。
+
+```ts
+app.useGlobalPipes(
+  new ValidationPipe({
+    disableErrorMessages: true,
+  }),
+);
+```
+
+これで詳細なエラーメッセージがレスポンスbodyに表示されなくなる。
+
+## プロパティの除去
+
+`ValidationPipe`は、メソッドハンドラが受け取るべきでないプロパティをフィルタリングする事もできる。この場合、受け入れ可能なプロパティをホワイトリストに登録すると、ホワイトリストに含まれないプロパティはオブジェクトから自動的に除去される。例えばハンドラが`email`と`password`プロパティを期待しているにも書くぁラズ、リクエストに`age`プロパティが含まれていた場合、このプロパティは結果の`DTO`から自動的に削除される。このような動作を有効にするには、`whitelist`を`true`に設定する。
+
+```ts
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,
+  }),
+);
+```
+
+`true`に設定すると、ホワイトリストに登録されていないプロパティ（バリデーションクラスにデコレータがないもの）が自動的に削除される。
+
+また、ホワイトリストに登録されていないプロパティが存在する場合、リクエストの処理を停止して、ユーザにエラーレスポンスを返すこともできる。オプションの`forbidNonWhitelsted`プロパティを`true`、`whitelist`を`true`に設定する。
+
+## ペイロードオブジェクトの変換
+
+ネットワーク経由で送られてくるペイロードは、プレーンなJavaScriptオブジェクトだ。`ValidationPipe`は、ペイロードを`DTO`クラスに応じて片付けされたオブジェクトに自動的に変換する事もできる。自動変換を有効にするには、`transform`を`true`に設定する。これは、メソッドレベルで行える。
