@@ -28,4 +28,5 @@ chapters:
   - techniques-database
   - techniques-mongo
   - techniques-configuration
+  - techniques-validation
 toc_depth: 2
