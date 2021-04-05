@@ -30,4 +30,5 @@ chapters:
   - techniques-configuration
   - techniques-validation
   - techniques-caching
+  - techniques-serialization
 toc_depth: 2
