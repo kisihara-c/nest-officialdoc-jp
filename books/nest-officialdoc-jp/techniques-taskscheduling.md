@@ -114,4 +114,143 @@ export class TasksService {
 | ---- | ---- |
 |`name`|宣言されたcronジョブにアクセスして制御する為に便利|
 |`timeZone`|実行時のタイムゾーンを指定する。すると、指定したタイムゾーンを基準として、実際の時間を修正する（modify the actual time）。タイムゾーンが無効な場合はエラーが発生する。利用可能な全てのタイムゾーンは、[Moment Timezone](https://momentjs.com/timezone/)にて確認可能。|
-|`utcOffset`|timeZoneパラメータを使う代わりに、タイムゾーンのオフセットを指定することができる。|
+|`utcOffset`|`timeZone`パラメータを使う代わりに、タイムゾーンのオフセットを指定することができる。|
+
+```ts
+import { Injectable } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+
+@Injectable()
+export class NotificationService {
+  @Cron('* * 0 * * *', {
+    name: 'notifications',
+    timeZone: 'Europe/Paris',
+  })
+  triggerNotifications() {}
+}
+```
+
+宣言済みのcronジョブにアクセスして制御する事も、Dynamic APIを使用してcronジョブを動的に作成する事もできる（その際cronパターンは実行時に定義される（where its cron pattern is defined at runtime…ちゃんと読めてるか怪しいです））。APIを使用して宣言型のcronジョブにアクセスするには、省略可能なオプションオブジェクト　`name`プロパティをデコレータの第２引数として渡して、ジョブに名前を関連付ける必要がある。
+
+## 宣言型インターバル
+
+指定の間隔で定期的にメソッドを実行する事を宣言するには、メソッド定義の前に`@Interval()`デコレータをつける。インターバルの値をミリ秒単位の数値として、以下のようにデコレータに渡す。
+
+```ts
+@Interval(10000)
+handleInterval() {
+  this.logger.debug('Called every 10 seconds');
+}
+```
+
+>HINT  
+>内部ではJavaScriptの`setInterval()`関数を利用した仕組みとなっている。cronジョブを使って定期的なジョブをスケジューリングする事もできる。
+
+宣言したクラスの外からDynamic APIを使って宣言した間隔を制御したい場合は、次のようにしてインターバルに名前をつける。
+
+```ts
+@Interval('notifications', 2500)
+handleInterval() {}
+```
+
+Dynamic APIは実行時にインターバルのプロパティが定義されるダイナミック・インターバルの**作成**や、インターバルの**リスト化**、**削除**も行える。
+
+## 宣言型タイムアウト
+
+指定したタイムアウト時に（一度だけ）メソッドを実行する事を宣言する場合は、メソッドの定義の前に`@Timeout()`デコレータをつける。以下のように、アプリケーション起動時からの相対的なタイムオフセット（ミリ秒単位）をデコレータに渡す。
+
+```ts
+@Timeout(5000)
+handleTimeout() {
+  this.logger.debug('5秒後に呼ばれる');
+}
+```
+
+>HINT  
+>Javascriptの`setTimeout()`関数を仕組みとしている。
+
+宣言したクラスの外からDynamic APIを使って制御したい場合は、以下のようにタイムアウトに名前をつける。
+
+```ts
+@Timeout('notifications', 2500)
+handleTimeout() {}
+```
+
+Dynamic APIは実行時にタイムアウトのプロパティが定義されるダイナミック・タイムアウトの**作成**や、タイムアウトの**リスト化**、**削除**も行える。
+
+## 動的スケジュールモジュールのAPI
+
+`nestjs/schedule`モジュールは、宣言的なcronジョブ、タイムアウト、インターバルを管理できるDynamic APIを提供する。このAPIでは実行時にプロパティが定義される、**動的な**cronジョブ、タイムアウト、およびインターバルの作成と管理も可能である。
+
+## 動的なcronジョブ
+
+`SchedulerRegistry`APIを利用して、コードのどこからでも`CronJob`インスタンスへ、名前を使って参照できるようになる。まず標準的なコンストラクタインジェクションを使って`SchedulerReggistery`をインジェクションしよう。
+
+```ts
+constructor(private schedulerRegistry: SchedulerRegistry) {}
+```
+
+>HINT  
+>`SchedulerRegistry`は`@nestjs/schedule`パッケージからインポートする。
+
+これを次のようにクラスで使用してみよう。以下のような宣言でcronジョブが作成されたとする。
+
+```ts
+@Cron('* * 8 * * *', {
+  name: 'notifications',
+})
+triggerNotifications() {}
+```
+
+次のコードを使ってこのジョブにアクセスしよう。
+
+```ts
+const job = this.schedulerRegistry.getCronJob('notifications');
+
+job.stop();
+console.log(job.lastDate());
+```
+
+`getCronJob()`メソッドは指定されたcronジョブを返す。返された`CronJob`オブジェクトは以下のメソッドを持つ。
+
+- `stop()` 実行が予定されているジョブを停止する。
+- `start()` 停止されたジョブを再起動する。
+- `setTime(time:CronTime)`ジョブを停止し、新しい時間を設定した後、ジョブを開始する。
+- `lastDate()`ジョブが最期に実行された日付の文字列表現を返す。
+- `nextDates(count:number)` 次のジョブ実行日を返す`moment`オブジェクトの配列を（サイズは`count`で）返す。
+
+>HINT  
+>`toDate()`を使って、`moment`オブジェクトを人間が読める形にしよう。
+
+以下のように`SchedulerRegistry.addCronJob()`メソッドを使用して、新しいcronジョブを動的に作成する。
+
+```ts
+addCronJob(name: string, seconds: string) {
+  const job = new CronJob(`${seconds} * * * * *`, () => {
+    this.logger.warn(`毎 (${seconds}) 秒 でjob ${name} が動く！`);
+  });
+
+  this.schedulerRegistry.addCronJob(name, job);
+  job.start();
+
+  this.logger.warn(
+    `job ${name} が毎分 ${seconds} 秒で動く！`,
+  );
+}
+```
+
+このコードでは、cronパッケージの`CronJob`オブジェクトを使用してcronジョブを作成している。`CronJob`のコンストラクタは、最初の引数としてcronパターン（`@Cron()`デコレータのようなもの）をとり、２番めの引数としてcronタイマーが起動したときに実行されるコールバックを取る。`SchedulerRegistry.addCronJob()`メソッドは`CronJob`の名前と`CronJob`オブジェクト自体を引数として取る。
+
+>WARNING  
+>アクセスする前に`SchedulerRegistry`をインジェクションする事を忘れないでほしい。cronパッケージから`CronJob`をインポートしてほしい。
+
+以下のように`SchedulerRegistry.deleteCronJob()`メソッドを使って名前付きのcronジョブを**削除**してみよう。
+
+```ts
+deleteCron(name: string) {
+  this.schedulerRegistry.deleteCronJob(name);
+  this.logger.warn(`job ${name} deleted!`);
+}
+```
+
+以下のように`SchedulerRegistry.getCronJobs()`メソッドを使って全てのcronジョブを**リスト化**してみよう。
