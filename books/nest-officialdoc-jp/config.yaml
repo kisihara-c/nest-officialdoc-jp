@@ -31,4 +31,5 @@ chapters:
   - techniques-validation
   - techniques-caching
   - techniques-serialization
+  - techniques-taskscheduling
 toc_depth: 2

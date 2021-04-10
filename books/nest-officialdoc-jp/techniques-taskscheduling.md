@@ -1,5 +1,5 @@
 ---
-title: techniques-taskscheduling.md
+title: techniques-taskscheduling
 ---
 
 # タスクスケジューリング
