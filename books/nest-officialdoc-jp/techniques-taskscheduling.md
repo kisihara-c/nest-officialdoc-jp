@@ -254,3 +254,119 @@ deleteCron(name: string) {
 ```
 
 以下のように`SchedulerRegistry.getCronJobs()`メソッドを使って全てのcronジョブを**リスト化**してみよう。
+
+```ts
+getCrons() {
+  const jobs = this.schedulerRegistry.getCronJobs();
+  jobs.forEach((value, key, map) => {
+    let next;
+    try {
+      next = value.nextDates().toDate();
+    } catch (e) {
+      next = 'error: next fire date is in the past!';
+    }
+    this.logger.log(`job: ${key} -> next: ${next}`);
+  });
+}
+```
+
+`getCronJobs()`は`map`を返す。このコードではマップをイテレートして、各`CronJob`の`nextDates()`にアクセスしようとしている。CronJob APIでは、ジョブが既に起動していて、将来の起動日がない場合は、例外を投げる。
+
+## 動的なインターバル
+
+`SchedulerRegistry.getInterval()`メソッドを使ってインターバルへの参照を取得する。先述のように、標準的なコンストラクタ・インジェクションを使用して`SchedulerRegistry`をインジェクションする。
+
+```ts
+constructor(private schedulerRegistry: SchedulerRegistry) {}
+```
+
+そして以下のように使う。
+
+```ts
+const interval = this.schedulerRegistry.getInterval('notifications');
+clearInterval(interval);
+```
+
+次のように`SchedulerRegistry.addInterval()`メソッドを使用して、新しいインターバルを動的に**作成**してみよう。
+
+```ts
+addInterval(name: string, milliseconds: number) {
+  const callback = () => {
+    this.logger.warn(`Interval ${name} executing at time (${milliseconds})!`);
+  };
+
+  const interval = setInterval(callback, milliseconds);
+  this.schedulerRegistry.addInterval(name, interval);
+}
+```
+
+このコードでは、標準的なJavaScriptのインターバルを作成し、それを`ScheduleRegistry.addInterval()`メソッドに渡している。このメソッドはインターバルの名前とインターバル自体、２つの引数を取る。
+
+`SchedulerRegistry.deleteInterval()`メソッドを使うとインターバルを**削除**できる。
+
+```ts
+deleteInterval(name: string) {
+  this.schedulerRegistry.deleteInterval(name);
+  this.logger.warn(`Interval ${name} deleted!`);
+}
+```
+
+`SchedulerRegistry.getIntervals()`メソッドを使うと全てのインターバルを**リスト化**できる。
+
+```ts
+getIntervals() {
+  const intervals = this.schedulerRegistry.getIntervals();
+  intervals.forEach(key => this.logger.log(`Interval: ${key}`));
+}
+```
+
+## 動的なタイムアウト
+
+タイムアウトへの参照は、`SchedulerRegistry.getTimeout()`メソッドで得られる。先述のように、標準的なコンストラクタ・インジェクションを使用して`SchedulerRegistry`をインジェクションする。
+
+```ts
+constructor(private schedulerRegistry: SchedulerRegistry) {}
+```
+
+以下のように使う。
+
+```ts
+const timeout = this.schedulerRegistry.getTimeout('notifications');
+clearTimeout(timeout);
+```
+
+次のように`SchedulerRegistry.addTimeout()`メソッドを使用して、新しいタイムアウトを動的に**作成**してみよう。
+
+```ts
+addTimeout(name: string, milliseconds: number) {
+  const callback = () => {
+    this.logger.warn(`Timeout ${name} executing after (${milliseconds})!`);
+  };
+
+  const timeout = setTimeout(callback, milliseconds);
+  this.schedulerRegistry.addTimeout(name, timeout);
+}
+```
+
+このコードでは、標準的なJavaScriptのタイムアウトを作成し、それをScheduleRegistry.addTimeout()メソッドに渡している。このメソッドはタイムアウトの名前とタイムアウト自体、２つの引数を取る。
+
+`SchedulerRegistry.deleteTimeout()`メソッドで名前付きのタイムアウトを**削除**してみよう。
+
+```ts
+deleteTimeout(name: string) {
+  deleteTimeout(name: string) { this.schedulerRegistry.deleteTimeout(name);
+  this.logger.warn(`Timeout ${name} deleted!`);
+}
+```
+
+`SchedulerRegistry.getTimeouts()`メソッドで全てのタイムアウトを**リスト化**してみよう。
+
+```ts
+getTimeouts() {
+  const timeouts = this.schedulerRegistry.getTimeouts();
+  timeouts.forEach(key => this.logger.log(`Timeout: ${key}`));
+}
+```
+
+## サンプル
+動く例は[こちら](https://github.com/nestjs/nest/tree/master/sample/27-scheduling)
