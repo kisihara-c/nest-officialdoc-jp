@@ -84,7 +84,7 @@ BullModule.registerQueue({
 
 ## 名前付き設定
 
-キューが複数の異なるRedisインスタンスに接続している場合、名前付き設定と呼ばれる機能を使用できる。指定したキーの下に複数の構成を登録し、キューのプションで参照ルうことができる。
+キューが複数の異なるRedisインスタンスに接続している場合、名前付き設定と呼ばれる機能を使用できる。指定したキーの下に複数の構成を登録し、キューのプションで参照することができる。
 
 例えば、アプリケーションに登録されているいくつかのキューが使用するRedisインスタンスが（デフォルトのものとは別に）追加されていると仮定すると、以下のようにその構成を登録できる。
 
@@ -124,3 +124,35 @@ export class AudioService {
 
 >HINT  
 >`@InjectQueue()`デコレータは、`registerQueue()`メソッドコールで提供された名前でキューを識別する（例：`audio`）。
+
+ここで、キューのadd()メソッドを呼び出し、ユーザー定義のジョブオブジェクトを渡してジョブを追加する。ジョブはシリアライズ可能なJavaScriptオブジェクトとして表現される（そのままRedisに保存される形）。渡されたジョブの形状は任意で、ジョブオブジェクトのセマンティクスを表現できる。
+
+```ts
+const job = await this.audioQueue.add({
+  foo: 'bar',
+});
+```
+
+## 名前付きジョブ
+
+ジョブは一意の名前を持てる。結果、指定された名前のジョブのみを処理する特殊なコンシューマーを作成できる。
+
+```ts
+const job = await this.audioQueue.add('transcode', {
+  foo: 'bar',
+});
+```
+
+>WARNING  
+>名前付きジョブを使用する場合、キューに追加された一意の名前ごとにプロセッサを作成しなければならない。そうしないと、キューは与えられたジョブのプロセッサがないと不平を言う。名前付きジョブのコンシューミングについての詳細は[こちら](https://docs.nestjs.com/techniques/queues#consumers)
+
+## ジョブのオプション
+
+ジョブには、関連した追加のオプションを設定可能。`Queue.add()`メソッドのjob引数の後に、`options`オブジェクトを渡す。ジョブオプションのプロパティは
+
+- `priority`:`number` - 省略可能な優先度の値。1（優先度最高）からMAX_INT（優先度最低）までの範囲で指定する。優先度を使う事はパフォーマンスに若干の影響を与える為注意。
+- `delay`:`number` - このジョブが処理されるまでの待ち時間（ミリ秒）。正確なdelayの為には、サーバーとクライアント両方の時計の同期が必要。
+- `attempts`:`number` - ジョブが完了するまでの総試行回数。
+- `repeat`:`RepeatOpts` - cronの仕様に従ってジョブを繰り返し実行する。[RepeatOpts](https://github.com/OptimalBits/bull/blob/master/REFERENCE.md#queueadd)を参照の事。
+- `backoff`:`number | BackoffOpts` - ジョブが失敗した場合の自動再試行のバックオフ設定です。[BackoffOpts](https://github.com/OptimalBits/bull/blob/master/REFERENCE.md#queueadd)を参照の事。
+- `lifo`:`boolean` - `true`の場合、ジョブをキューの左端ではなく右端に追加する（デフォルトは`false`）。
