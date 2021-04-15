@@ -155,4 +155,81 @@ const job = await this.audioQueue.add('transcode', {
 - `attempts`:`number` - ジョブが完了するまでの総試行回数。
 - `repeat`:`RepeatOpts` - cronの仕様に従ってジョブを繰り返し実行する。[RepeatOpts](https://github.com/OptimalBits/bull/blob/master/REFERENCE.md#queueadd)を参照の事。
 - `backoff`:`number | BackoffOpts` - ジョブが失敗した場合の自動再試行のバックオフ設定です。[BackoffOpts](https://github.com/OptimalBits/bull/blob/master/REFERENCE.md#queueadd)を参照の事。
-- `lifo`:`boolean` - `true`の場合、ジョブをキューの左端ではなく右端に追加する（デフォルトは`false`）。
+- `lifo`:`boolean` - `true`の場合、ジョブをlifoで処理する――キューの左端ではなく右端に追加する（デフォルトは`false`）。
+- `timeout`: `number` - ジョブがタイムアウト・エラーを起こすまでのミリ秒数。
+- `jobId`: `number | string` - ジョブIDを上書きする。デフォルトではジョブIDは一意の整数だが、これを使えば上書き可能。使用時ジョブIDの一意性は自分で確認する事。既に存在しているIDでジョブを追加しようとしても、追加されない。
+- `removeOnComplete`: `boolean | number` - `true`時、ジョブが正常に完了したときにジョブを削除する。数字は保持するジョブの量を指定する。デフォルトでは、完了したセットの中でジョブは保持される。
+- `removeOnFail`: `boolean | number` - `true`時、すべての試行に失敗した後ジョブを削除する。数値は保持するジョブの量を指定する。デフォルトでは、完了したセットの中でジョブは保持される。
+- `stackTraceLimit`: `number` - スタックトレースに記録されるスタックトレース行数を制限する。
+
+、ジョブのカスタマイズ例をいくつか紹介する。
+
+ジョブの開始を遅らせるため、`delay`を使ってみよう。
+
+```ts
+const job = await this.audioQueue.add(
+  {
+    foo: 'bar',
+  },
+  { delay: 3000 }, // 3 seconds delayed
+);
+```
+
+ジョブをlifoで処理するには`lifo`を`true`にしよう。
+
+```ts
+const job = await this.audioQueue.add(
+  {
+    foo: 'bar',
+  },
+  { lifo: true },
+);
+```
+
+ジョブに優先順位をつける為、`priority`を使ってみよう。
+
+```ts
+const job = await this.audioQueue.add(
+  {
+    foo: 'bar',
+  },
+  { priority: 2 },
+);
+```
+
+## コンシューマー
+
+コンシューマーは、キューに追加されたジョブをこなすか、キュー上のイベントをlistenするか、あるいはその両方を行うメソッドを定義するクラスの事だ。以下のように`@Processor()`デコレータを使用してコンシューマークラスを宣言する。
+
+```ts
+import { Processor } from '@nestjs/bull';
+
+@Processor('audio')
+export class AudioConsumer {}
+```
+
+>HINT  
+>コンシューマーは、`@nestjs/bull`パッケージが拾い上げられるように、プロバイダとして登録されている必要がある。
+
+デコレータの文字列引数（例：`audio`）には、クラスのメソッドに関連付けられるキューの名前が入る。
+
+コンシューマークラス内では、ハンドラ・メソッドを`@Process()`デコレータで装飾して、ジョブハンドラを宣言する。
+
+```ts
+import { Processor, Process } from '@nestjs/bull';
+import { Job } from 'bull';
+
+@Processor('audio')
+export class AudioConsumer {
+  @Process()
+  async transcode(job: Job<unknown>) {
+    let progress = 0;
+    for (i = 0; i < 100; i++) {
+      await doSomething(job.data);
+      progress += 10;
+      job.progress(progress);
+    }
+    return {};
+  }
+}
+```
