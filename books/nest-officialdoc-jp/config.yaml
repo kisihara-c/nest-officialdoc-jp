@@ -32,4 +32,5 @@ chapters:
   - techniques-caching
   - techniques-serialization
   - techniques-taskscheduling
+  - techniques-queues
 toc_depth: 2
