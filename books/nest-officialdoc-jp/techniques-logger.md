@@ -124,3 +124,86 @@ import { MyLogger } from './my-logger.service';
 })
 export class LoggerModule {}
 ```
+
+このコードによってカスタムロガーを他のモジュールで使用できる。`MyLogger`クラスはモジュールの一部である為、依存性インジェクションを使用できる（例えば、`ConfigService`をインジェクションする為等）。このカスタムロガーを`Nest`がシステムロギング（ブートストラップやエラー処理など）に使用する為には、もうひとつ必要なテクニックがある。
+
+アプリケーションのインスタンス化（`NestFactory.create()`）は、あらゆるモジュールのコンテキストの外で行われる為、初期化時の通常の依存性インジェクションフェーズには参加しない。そのため、少なくとも1つのアプリケーションモジュールに`LoggerModule`をインポートさせて、Nestが`MyLogger`クラスのシングルトンインスタンスをインスタンス化するようにしなければならない。そして次のコードによって、Nestに単一の`MyLogger`シングルトンを使用させられる。
+
+```ts
+const app = await NestFactory.create(AppModule, {
+  logger: false,
+});
+app.useLogger(app.get(MyLogger));
+await app.listen(3000);
+```
+
+ここでは、`NestApplication`インスタンスの`get()`メソッドを使用して、`MyLogger`オブジェクトのシングルトンを取得している。この手法は基本的に、Nestで使用するロガーのインスタンスをインジェクションする方法だ。`app.get()`呼び出しは`MyLogger`のシングルトンを取得する。そして上記のように、別のモジュールで最初にインジェクションされるインスタンスに依存している。
+
+この方法の唯一の欠点は、最初の初期化メッセージがどこにも表示されない事で、ごくたまに重要な初期化エラーを見逃す。別の方法として、デフォルトのロガーを使って最初の初期化メッセージを出力し、その後カスタムロガーに切り替える事もできる。
+
+```ts
+const app = await NestFactory.create(AppModule);
+app.useLogger(app.get(MyLogger));
+await app.listen(3000);
+```
+
+また、この`MyLogger`プロバイダを機能クラスにインジェクションする事で、Nestのシステムロギングとアプリケーションロギングの両方で一貫したロギング動作を実現できる。詳細については以下のそれぞれの項を参照の事。
+
+## アプリケーションのロギングにロガーを使用する
+
+上記のテクニックを組み合わせて、Nestシステムのロギングと独自のアプリケーションのイベント/メッセージのロギングの両方で、一貫した動作とフォーマットを提供する事ができる。
+
+グッドプラクティスは、`@nestjs/common`の`Logger`クラスを各サービスでインスタンス化する事だ。`Logger`のコンストラクタの`context`引数には、以下のようにサービス名を指定する。
+
+```ts
+import { Logger, Injectable } from '@nestjs/common';
+
+@Injectable()
+class MyService {
+  private readonly logger = new Logger(MyService.name);
+  
+  doSomething() {
+    this.logger.log('Doing something...');
+  }
+}
+```
+
+デフォルトのロガーの実装では、以下の例の`NestFactory`のように、角括弧の中に`context`が出力される。
+
+```ts
+[Nest] 19096   - 12/08/2019, 7:12:59 AM   [NestFactory] Starting Nest application...
+```
+
+`app.useLogger()`でカスタムロガーを指定すると、実際にNestが内部で使用する。つまり`app.userLogger()`を呼び出す事でデフォルトのロガーを簡単にカスタムロガーに切り替えられる事で、コードが実装に対して独立しているといえる。
+
+前節の手順で`app.useLogger(app.get(MyLogger))`を呼び出した場合、`MyService`から`this.logger.log()`を呼び出すと、`MyLogger`インスタンスから`log`メソッドを呼び出す事になる。
+
+これはほとんどの場合で有用だが、もっとカスタマイズが必要な場合（カスタムメソッドの追加や呼び出し等）は次のセクションを参照の事。
+
+## カスタムロガーをインジェクションする
+
+手始めに、以下のようなコードで組み込みのロガーを拡張する。ここでは`Logger`クラスの設定メタデータとして`scope`オプションを指定し、[一時的な](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/fundamentals-injectionscopes)スコープを指定する事で、各機能モジュールで`MyLogger`の一意のインスタンスを持つようにしている。この例では個々の`Logger`メソッド（`log()`、`warn()`など）を拡張していないが、必要に応じて拡張可能。
+
+```ts
+import { Injectable, Scope, Logger } from '@nestjs/common';
+
+@Injectable({ scope: Scope.TRANSIENT })
+export class MyLogger extends Logger {
+  customLog() {
+    this.log('Please feed the cat!');
+  }
+}
+```
+
+次に、以下のコードで`LoggerModule`を作成しよう。
+
+```ts
+import { Module } from '@nestjs/common';
+import { MyLogger } from './my-logger.service';
+
+@Module({
+  providers: [MyLogger],
+  exports: [MyLogger],
+})
+export class LoggerModule {}
+```
