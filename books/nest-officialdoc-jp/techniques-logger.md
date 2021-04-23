@@ -4,7 +4,7 @@ title: techniques-logger
 
 # ロガー
 
-Nestはテキストベースのロガーが内蔵されており、アプリケーションの起動時やキャッチした例外の表示（システムロギング）などに使用される。この機能は`@nestjs/common`パッケージの`Logger`クラスで提供されている。ロギングシステムの動作は、以下のように完全に制御可能。
+Nestにはテキストベースのロガーが内蔵されている。アプリケーションの起動時やキャッチした例外の表示（システムロギング）などに使用される。この機能は`@nestjs/common`パッケージの`Logger`クラスで提供されている。ロギングシステムの動作は、以下のように完全に制御可能。
 
 - ログを完全に無効にする
 - ログの詳細レベルの指定（例：エラー、警告、デバッグ情報の表示等）
@@ -44,7 +44,7 @@ await app.listen(3000);
 
 ## カスタム実装
 
-`logger`プロパティの値を`LoggerService`インターフェイスを満たすオブジェクトに設定する事で、Nestがシステムロギングに使用するカスタムロガーの実装を作る事ができる。例えば以下のように組み込みのグローバルJavaScript（`LoggerService`インターフェイスを実装している）を使用するようにNestに伝える事ができる。
+`logger`プロパティの値を`LoggerService`インターフェイスを満たすオブジェクトとして設定する事で、Nestがシステムロギングに使用するカスタムロガーの実装を作る事ができる。例えば以下のように組み込みのグローバルJavaScript（`LoggerService`インターフェイスを実装している）を使用できる。
 
 ```ts
 const app = await NestFactory.create(AppModule, {
@@ -97,7 +97,7 @@ import { Logger } from '@nestjs/common';
 
 export class MyLogger extends Logger {
   error(message: string, trace: string) {
-    // add your tailored logic here
+    // オリジナルのロジックをここに追加
     super.error(message, trace);
   }
 }
@@ -109,7 +109,7 @@ Nestにシステムロギング用の拡張ロガーを使用させるには、�
 
 ## 依存性インジェクション
 
-より高度なロギング機能の実現の為、依存性インジェクションを活用すると良い。例えば`ConfigService`をロガーに注入してカスタマイズし、さらにカスタムロガーを他のコントローラやプロバイダにインジェクションする事ができる。カスタムロガーの依存性インジェクションを有効にするには、`LoggerService`を実装したクラスを作成し、そのクラスをモジュールのプロバイダとして登録する。例えばこう進められる――
+より高度なロギング機能の実現の為、依存性インジェクションを活用すると良い。例えば`ConfigService`をロガーにインジェクションしてカスタマイズし、さらにカスタムロガーを他のコントローラやプロバイダにインジェクションする事ができる。カスタムロガーの依存性インジェクションを有効にするには、`LoggerService`を実装したクラスを作成し、そのクラスをモジュールのプロバイダとして登録する。例えばこう進められる：
 
 1. 前の項のように組み込みの`Logger`を拡張するか、完全にオーバーライドする`MyLogger`クラスを定義してみよう。必ず`LoggerService`インターフェイスを実装してほしい。
 2. 以下のように`LoggerModule`を作成し、そのモジュールから`MyLogger`を提供する。
@@ -207,3 +207,45 @@ import { MyLogger } from './my-logger.service';
 })
 export class LoggerModule {}
 ```
+
+次に、`LoggerModule`を機能モジュールにインポートする。デフォルトの`Logger`を拡張したので、`setContext`メソッドを使用できるようになった。コンテキストを考慮したカスタムロガーを以下のように使い始められる。
+
+```ts
+import { Injectable } from '@nestjs/common';
+import { MyLogger } from './my-logger.service';
+
+@Injectable()
+export class CatsService {
+  private readonly cats: Cat[] = [];
+
+  constructor(private myLogger: MyLogger) {
+    // 遷移スコープによって、CatsServiceは独自のMyLoggerインスタンスを持つ。
+    // なのでここにコンテキストをセットしても他のサービスの他のインスタンスには影響がない。 
+    this.myLogger.setContext('CatsService');
+  }
+
+  findAll(): Cat[] {
+    // 全てのデフォルトメソッドを呼べる
+    this.myLogger.warn('About to return cats!');
+    // カスタムメソッドも呼べる
+    this.myLogger.customLog();
+    return this.cats;
+  }
+}
+```
+
+最後に、以下のようにNest内`main.ts`ファイルでカスタムロガーのインスタンスを使用する。もちろんこの例では（`log()`や`warn()`などの`Logger`メソッドを拡張して）実際にロガーの動作をカスタマイズしていないので、このステップは実際には必要ない。しかし、これらのメソッドにカスタムロジックを追加し、Nestに同じ実装を使用させたい**場合は**必要になる。
+
+```ts
+const app = await NestFactory.create(AppModule, {
+  logger: false,
+});
+app.useLogger(new MyLogger());
+await app.listen(3000);
+```
+
+`NestFactory.create`に`logger:false`を指定した場合、`useLogger`を呼び出すまで何も記録されない為、重要な初期化エラーを見逃してしまう可能性がある事に注意。初期メッセージの一部がデフォルトの`logger`で記録される事を気にしないのであれば、`logger:false`オプションを省略しても大丈夫。
+
+## 外部ロガーの仕様
+
+本番アプリケーションでは、高度なフィルタリング、フォーマット、集中的なロギングなど、特別なロギング要件がある場合がよくある。Nestの組み込みロガーはNestの挙動のモニタリングによく使われるし、プロダクト内独自の機能モジュールに対する、基本的なフォーマットのテキストでのロギングに有用だ。だが、製品アプリケーションでは[Winston](https://github.com/winstonjs/winston)のような専用ロギングモジュールを利用することがよくある。他の標準的なNode.jsアプリケーションと同様、Nestでもそういったモジュールを最大限に活用可能だ。

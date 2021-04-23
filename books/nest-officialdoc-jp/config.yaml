@@ -33,4 +33,5 @@ chapters:
   - techniques-serialization
   - techniques-taskscheduling
   - techniques-queues
+  - techniques-logger
 toc_depth: 2
