@@ -35,4 +35,5 @@ chapters:
   - techniques-queues
   - techniques-logger
   - techniques-cookies
+  - techniques-events
 toc_depth: 2
