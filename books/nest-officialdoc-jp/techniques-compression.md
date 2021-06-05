@@ -1,5 +1,5 @@
 ---
-title: compression
+title: techniques-compression
 ---
 
 # 圧縮
