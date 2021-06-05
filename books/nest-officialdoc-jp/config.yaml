@@ -36,4 +36,5 @@ chapters:
   - techniques-logger
   - techniques-cookies
   - techniques-events
+  - techniques-compression
 toc_depth: 2
