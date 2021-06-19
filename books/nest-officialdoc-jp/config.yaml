@@ -38,4 +38,5 @@ chapters:
   - techniques-events
   - techniques-compression
   - techniques-fileupload
+  - techniques-httpmodule
 toc_depth: 2
