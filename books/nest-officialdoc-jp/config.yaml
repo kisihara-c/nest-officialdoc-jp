@@ -39,4 +39,5 @@ chapters:
   - techniques-compression
   - techniques-fileupload
   - techniques-httpmodule
+  - techniques-session
 toc_depth: 2
