@@ -40,4 +40,5 @@ chapters:
   - techniques-fileupload
   - techniques-httpmodule
   - techniques-session
+  - techniques-modelviewcontroller
 toc_depth: 2
