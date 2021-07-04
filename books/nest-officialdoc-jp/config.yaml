@@ -41,4 +41,6 @@ chapters:
   - techniques-httpmodule
   - techniques-session
   - techniques-modelviewcontroller
+  - techniques-performance
+  - techniques-serversentevents
 toc_depth: 2
