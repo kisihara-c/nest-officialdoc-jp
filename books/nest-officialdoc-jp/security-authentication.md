@@ -1,5 +1,5 @@
 ---
-title: security-authentication.md
+title: security-authentication
 ---
 
 # 認証
