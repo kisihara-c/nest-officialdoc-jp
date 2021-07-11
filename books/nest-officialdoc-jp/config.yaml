@@ -43,4 +43,5 @@ chapters:
   - techniques-modelviewcontroller
   - techniques-performance
   - techniques-serversentevents
+  - security-authentication
 toc_depth: 2
