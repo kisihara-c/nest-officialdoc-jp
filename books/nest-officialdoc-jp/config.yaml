@@ -45,4 +45,5 @@ chapters:
   - techniques-serversentevents
   - security-authentication
   - security-authorization
+  - security-encryptionandhashing
 toc_depth: 2
