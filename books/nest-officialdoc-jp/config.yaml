@@ -44,4 +44,5 @@ chapters:
   - techniques-performance
   - techniques-serversentevents
   - security-authentication
+  - security-authorization
 toc_depth: 2
