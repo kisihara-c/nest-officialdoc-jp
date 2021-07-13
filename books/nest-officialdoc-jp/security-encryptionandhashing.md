@@ -15,7 +15,7 @@ Node.jsには文字列・数値・バッファ・ストリームなどを暗号�
 例としてAES（Advanced Encryption System）の`'aes-256-ctr'`アルゴリズムのCTR暗号化モードを使ってみよう。
 
 ```ts
-import { createCipheriv, randomBytes, scrypt } from 'crypto';
+import { createCipheriv, randomBytes } from 'crypto';
 import { promisify } from 'util';
 
 const iv = randomBytes(16);

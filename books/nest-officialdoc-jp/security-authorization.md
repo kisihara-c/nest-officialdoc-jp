@@ -156,7 +156,7 @@ class User {
 class Article {
   id: number;
   isPublished: boolean;
-  authorId: number;
+  authorId: string;
 }
 ```
 

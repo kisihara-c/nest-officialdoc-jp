@@ -548,7 +548,7 @@ export class JwtAuthGuard extends AuthGuard(['strategy_jwt_1', 'strategy_jwt_2',
 
 ## グローバルで認証を有効にする
 
-大半のエンドポイントがデフォルトで保護されている場合は、認証ガードを[グローバルガード](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/overview-guards#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%89%E3%81%99%E3%82%8B%E3%82%AC%E3%83%BC%E3%83%89)として登録し、各コントローラで`@UserGuards()`デコレータを使用する代わりに、どのルートを公開するかを単純に指定する事ができる。
+大半のエンドポイントをデフォルトで保護する必要がある場合は、認証ガードを[グローバルガード](https://zenn.dev/kisihara_c/books/nest-officialdoc-jp/viewer/overview-guards#%E3%83%90%E3%82%A4%E3%83%B3%E3%83%89%E3%81%99%E3%82%8B%E3%82%AC%E3%83%BC%E3%83%89)として登録し、各コントローラで`@UserGuards()`デコレータを使用する代わりに、どのルートをパブリックにするかを単純に指定する事ができる。
 
 まず`JwtAuthGuard`をグローバルガードとして登録しよう。どんなモジュールでも以下の手順は可能だ。
 

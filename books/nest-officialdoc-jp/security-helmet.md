@@ -36,19 +36,19 @@ app.use(helmet());
 $ npm i --save fastify-helmet
 ```
 
-[fastify-helmet](https://github.com/fastify/fastify-helmet)はミドルウェアとしてではなくFastifyのプラグインとして、つまり`app.register()`を使って使用する。
+[fastify-helmet](https://github.com/fastify/fastify-helmet)はミドルウェアとしてではなく[Fastifyのプラグイン](https://www.fastify.io/docs/latest/Plugins/)として、つまり`app.register()`を使って使用する。
 
 ```ts
-import { fastifyHelmet } from 'fastify-helmet';
+import * as helmet from 'fastify-helmet';
 // 初期化ファイルのどこか
-await app.register(fastifyHelmet);
+app.register(helmet);
 ```
 
 >WARNING  
 >`apollo-server-fastify`と`fastify-helmet`を使用している場合、GraphQL playgroundの[CSP](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)に問題が発生する可能性がある。
 >
 >```ts
->await app.register(fastifyHelmet, {
+>app.register(helmet, {
 >  contentSecurityPolicy: {
 >    directives: {
 >      defaultSrc: [`'self'`],
@@ -61,7 +61,7 @@ await app.register(fastifyHelmet);
 >});
 >
 >// CSPを全く使用しない場合は、これを使える。
->await app.register(fastifyHelmet, {
+>app.register(helmet, {
 >  contentSecurityPolicy: false,
 >});
 >```
