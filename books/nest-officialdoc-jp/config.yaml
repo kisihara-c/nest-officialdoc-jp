@@ -1,5 +1,5 @@
 title: "NestJS 公式ドキュメントver7日本語訳"
-summary: " フルスタックサーバーサイドフレームワークNestのドキュメントを日本語訳します。DeepL翻訳を下敷きとし、ある程度一人でやる意志ではありますが（目標：～securityパート）、githubからの自動デプロイですので、ぜひプルリクエストを下さい。　https://github.com/kisihara-c/nest-officialdoc-jp "
+summary: " フルスタックサーバーサイドフレームワークNestのドキュメントの日本語訳です。DeepL翻訳を下敷きとして目標（～securityパート）達成したため完結です。もうやりません。githubにありますので、フォーク等お好きにどうぞ。　https://github.com/kisihara-c/nest-officialdoc-jp "
 topics: ["Nest","NestJS","Node.js","Web"]
 published: true
 price: 0
