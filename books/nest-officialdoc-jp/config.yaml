@@ -49,4 +49,5 @@ chapters:
   - security-helmet
   - security-cors
   - security-csrfprotection
+  - security-ratelimiting
 toc_depth: 2
