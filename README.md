@@ -2,7 +2,7 @@
 
 # Description
 Node.jsのサーバーサイドフレームワーク[Nest(NestJS)](https://nestjs.com/)の[公式ドキュメント ver7](https://docs.nestjs.com/)を非公式に翻訳します。  
-DeepL翻訳を下敷きとし、ある程度一人でやる意志がありますが（目標：～securityパート）、プルリクお待ちしております。  
+～sercurityパートの目標に達したので当方としては完結です。プルリクお待ちしております。  
 特に技術文書としてのレベルはご指摘がなければ保証不能です。
 
 # Link
