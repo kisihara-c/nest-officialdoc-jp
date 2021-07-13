@@ -46,4 +46,6 @@ chapters:
   - security-authentication
   - security-authorization
   - security-encryptionandhashing
+  - security-helmet
+  - security-cors
 toc_depth: 2
