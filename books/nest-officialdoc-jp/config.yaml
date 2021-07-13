@@ -48,4 +48,5 @@ chapters:
   - security-encryptionandhashing
   - security-helmet
   - security-cors
+  - security-csrfprotection
 toc_depth: 2
