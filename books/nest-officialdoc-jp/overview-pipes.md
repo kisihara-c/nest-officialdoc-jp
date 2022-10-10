@@ -5,7 +5,7 @@ title: overview-pipes
 # パイプ
 パイプは`@Injectable()`デコレータで装飾されたクラスだ。`PipeTransform`インターフェイスの実装が必要となる。
 
-[画像](https://docs.nestjs.com/assets/Pipe_1.png)
+![画像](https://docs.nestjs.com/assets/Pipe_1.png)
 
 パイプには２つのユースケースがある。
 - 変換：入力データを希望の形に変換する（例：文字列→整数）
@@ -95,7 +95,7 @@ async findOne(@Param('uuid', new ParseUUIDPipe()) uuid: string) {
 上記では様々なParse*ファミリーの組み込みパイプのバインド例を見てきた。検証パイプのバインドは少し異なる。その事は続く章で議論していく。
 
 >HINT  
->検証パイプの豊富な例はtechniques-validationの章を参照の事。
+>検証パイプの豊富な例は[techniques-validationの章](./techniques-validation)を参照の事。
 
 ## カスタムパイプ
 
@@ -140,7 +140,7 @@ export interface ArgumentMetadata {
 |data|デコレータに渡される文字列（例えば`@Body(``string``)`）のようなもの。デコレータのカッコを空にした場合はundefinedとなる。|
 
 >Warning  
->TypeScriptのインターフェイスはトランスパイレーション時に消える。よって、メソッド変数の型がクラスではなくインターフェイスとして宣言されている場合、メタタイプの値はObjectとなる。
+>TypeScriptのインターフェイスはトランスパイル時に消える。よって、メソッド変数の型がクラスではなくインターフェイスとして宣言されている場合、メタタイプの値はObjectとなる。
 
 ## スキーマに基づいた検証
 検証パイプをもう少し便利にしよう。`CatsController`の`create()`メソッドに注目する。ここで、来たポストの本体であるオブジェクトが有効か否か、サービスメソッドが起動する前に確かめられる事を確認したい。
@@ -252,7 +252,7 @@ export class CreateCatDto {
 ```
 
 >HINT  
->クラスバリデータのデコレータについてはclass-validatorの項でもっと読める。
+>クラスバリデータのデコレータをより知るには、[class-validatorのドキュメント](https://github.com/typestack/class-validator#usage)を参照のこと。
 
 これらのアノテーションを使う`validationPipe`クラスができた。
 
@@ -394,4 +394,4 @@ async findAll(
 ```
 
 ## 組み込みの検証パイプ
-注意点として、`ValidationPipe`はNestによって提供されており、一般的な検証パイプを独自に構築する必要はない。組み込みの`ValidationPipe`はこの章で構築したサンプルよりも沢山のオプションを提供する。詳細とたくさんの例についてはvalidationの項に記載。
+注意点として、`ValidationPipe`はNestによって提供されており、一般的な検証パイプを独自に構築する必要はない。組み込みの`ValidationPipe`はこの章で構築したサンプルよりも沢山のオプションを提供する。詳細とたくさんの例については[validationの項](./techniques-validation)に記載。

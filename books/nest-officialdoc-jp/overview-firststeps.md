@@ -41,7 +41,7 @@ src
 | app.service.ts | シングルメソッドの簡便なサービス |
 | main.ts | NestFactory機能を使いNest アプリケーションインスタンスを作る為のファイル |
 
-main.tsはasync関数を持ち、独力（靴紐を持つように）で動く。
+main.tsにはアプリケーションを起動するasync関数が含まれている。
 
 ```ts:main.ts
 import { NestFactory } from '@nestjs/core';
@@ -66,7 +66,7 @@ Nestはplatform-agnostic（プラットフォーム不可知）なフレーム�
 | `platform-fastify` | Fastifyはハイパフォーマンスでオーバーヘッドの少ない最高効率と最高速度を提供するフレームワーク。使い方は[こちら](https://docs.nestjs.com/techniques/performance) |
 | ---- | ---- |
 
-どのプラットフォームと使われても、nestはそれ自体がアプリケーションインターフェイスを持つ。上記の例だと、`NestExpressApplication`と`NestFastifyApplication`となる。  
+どのプラットフォームと使われても、Nestはそれ自体がアプリケーションインターフェイスを持つ。上記の例だと、`NestExpressApplication`と`NestFastifyApplication`となる。  
 以下の例のように、`NestFactory.create()`メソッドに型を渡すと、`app`オブジェクトは特定のプラットフォーム専用のメソッドを手に入れる。ただし、実際に基礎となるプラットフォームAPIにアクセスしたい場合を除き、型を指定する必要はない。
 
 `const app = await NestFactory.create<NestExpressApplication>(AppModule);`

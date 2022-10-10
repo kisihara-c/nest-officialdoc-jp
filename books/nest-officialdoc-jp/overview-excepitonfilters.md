@@ -5,7 +5,7 @@ title: "overview-exceptionfilters"
 # 例外フィルタ
 Nestには未処理のすべての例外を処理するための**例外レイヤ**が組み込まれている。アプリケーションのコードで処理されない例外が発生した場合、このレイヤーが例外を補足し、ユーザーフレンドリなレスポンスを自動的に送信する。
 
-[画像](https://docs.nestjs.com/assets/Filter_1.png)
+![画像](https://docs.nestjs.com/assets/Filter_1.png)
 
 素晴らしい事に、このアクションは組み込みのグローバル例外フィルタによって実行され、`HttpExepction`型の例外（およびそのサブクラス）を処理する。
 例外が認識されない場合（つまり、例外が`HttpExeption`でも`HttpExeption`を継承するクラスでも無い場合）、組み込まれた例外フィルタは以下のような規定のJSONレスポンスを生成する。
@@ -145,8 +145,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
 `@Catch(HttpException)`デコレータは必要なメタデータを例外フィルタにバインドし、この特定のフィルタが`HttpException`型の例外を探しており他は不要である事をNestに伝達する。`Catch()`デコレータには単一のパラメータ・カンマ区切りのリストを指定する事ができる。一度に複数の型の例外に対するフィルタを設定する事ができる。
 
-## ArgmentsHost
-`catch()`メソッドのパラメータを見てみよう。`exception`変数は現在処理中の例外オブジェクトだ。ホストパラメータは`ArgumentsHost`となる。`ArgumentsHost`は強力で有用なオブジェクトだ。このコードサンプルでは`ArgumentsHost`といくつかのヘルパーメソッドを使用する。元のリクエストハンドラ（例外が発生したコントローラ内）に渡されている`Request`オブジェクトと`Response`オブジェクトへの参照を取得している。`ArgmentsHost`については後のexecution context（実行コンテキスト）の項で詳しく説明する。  
+## ArgumentsHost
+`catch()`メソッドのパラメータを見てみよう。`exception`変数は現在処理中の例外オブジェクトだ。ホストパラメータは`ArgumentsHost`となる。`ArgumentsHost`は強力で有用なオブジェクトだ。このコードサンプルでは`ArgumentsHost`といくつかのヘルパーメソッドを使用する。元のリクエストハンドラ（例外が発生したコントローラ内）に渡されている`Request`オブジェクトと`Response`オブジェクトへの参照を取得している。`ArgumentsHost`については後の[execution context（実行コンテキスト）](./fundamentals-executioncontext)の項で詳しく説明する。  
 
 ※この抽象度の理由は、`ArgumentsHost`が全てのコンテキストで機能する為だ。例えば今扱っているHTTPサーバーのコンテキストだけでなく、マイクロサービスやWebSocketsを含む。execution contextの項では、`ArgumentsHost`とそのヘルパー関数の力を使って、どのようにして**あらゆる**実行コンテキストの基礎たる適切な引数（appropriate underlying arguments）にアクセスできるかを見ていく。そうして、全てのコンテキストで動く汎用的な例外フィルタを書くことができるようになる。
 
@@ -291,4 +291,4 @@ async function bootstrap() {
 bootstrap();
 ```
 
-２つめの方法はAPP_FILTERを使う方法だ。遡ってバインディングフィルタの項を参照の事。
+２つめの方法はAPP_FILTERを使う方法だ。遡って[バインディングフィルタの項](##バインディングフィルタ)を参照の事。
